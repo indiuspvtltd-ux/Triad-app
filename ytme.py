@@ -432,7 +432,6 @@ else:
             file_extension = os.path.splitext(uploaded_file.name)[1]
             final_name = custom_title + file_extension
             
-            # Adjusted to 2MB to balance stability on mobile and prevent zero division
             media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=2*1024*1024, resumable=True)
             request = drive_service.files().create(body={'name': final_name, 'parents': [target_folder_id]}, media_body=media, fields='id')
             
@@ -440,8 +439,6 @@ else:
             status_text = st.empty()
             response = None
             start_time = time.time()
-            
-            # FIX: Initialize the update timer correctly to prevent math crashes
             last_ui_update = start_time 
             
             while response is None:
@@ -452,7 +449,6 @@ else:
                         pct = int(status.resumable_progress / uploaded_file.size * 100)
                         progress_bar.progress(min(pct, 100))
                         
-                        # FIX: Added strict safety check to prevent Division by Zero on fast networks
                         elapsed_time = current_time - start_time
                         if elapsed_time > 0:
                             speed = (status.resumable_progress / elapsed_time) / (1024 * 1024)
@@ -468,7 +464,10 @@ else:
                 status_text.markdown("📸 Processing custom thumbnail...")
                 thumb_ext = os.path.splitext(thumb_file.name)[1]
                 thumb_metadata = {'name': f"thumb_{video_id}{thumb_ext}", 'parents': [target_folder_id]}
-                thumb_media = MediaIoBaseUpload(thumb_file, mimetype=thumb_file.type, resumable=True)
+                
+                # FIX: resumable=False prevents API crashing for small image uploads
+                thumb_media = MediaIoBaseUpload(thumb_file, mimetype=thumb_file.type, resumable=False)
+                
                 thumb_resp = drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
 
             status_text.empty()
