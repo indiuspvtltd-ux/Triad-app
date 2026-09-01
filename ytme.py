@@ -1,10 +1,10 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import io
 import sqlite3
 import hashlib
 import time
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -45,13 +45,10 @@ init_db()
 # ==========================================
 st.markdown("""
 <style>
-/* Futuristic Dark Background */
 .stApp {
     background: linear-gradient(135deg, #09071b, #1a163b, #111019);
     color: #f0f0f5;
 }
-
-/* Large Squared Glossy Tech Header Cards */
 .tech-container {
     background: rgba(25, 22, 48, 0.6);
     backdrop-filter: blur(16px);
@@ -62,8 +59,6 @@ st.markdown("""
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     margin-bottom: 25px;
 }
-
-/* Glossy Video Card Container */
 .glossy-card {
     background: rgba(20, 18, 38, 0.7);
     backdrop-filter: blur(12px);
@@ -75,13 +70,11 @@ st.markdown("""
     margin-bottom: 30px;
     transition: transform 0.3s ease, border-color 0.3s ease;
 }
-
 .glossy-card:hover {
     transform: translateY(-3px);
     border-color: rgba(255, 75, 75, 0.4);
     box-shadow: 0 12px 40px rgba(255, 75, 75, 0.15);
 }
-
 .card-title {
     font-size: 1.3rem;
     font-weight: 700;
@@ -91,14 +84,11 @@ st.markdown("""
     padding-left: 12px;
     letter-spacing: 0.5px;
 }
-
-/* Large Squared Modern Tech Tabs */
 [data-baseweb="tab-list"] {
     gap: 15px;
     background-color: transparent;
     padding-bottom: 10px;
 }
-
 [data-baseweb="tab"] {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -109,22 +99,18 @@ st.markdown("""
     font-size: 1.05rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 [data-baseweb="tab"]:hover {
     background: rgba(255, 75, 75, 0.1);
     border-color: rgba(255, 75, 75, 0.4);
     color: #ffffff !important;
     box-shadow: 0 0 20px rgba(255, 75, 75, 0.2);
 }
-
 [aria-selected="true"] {
     background: linear-gradient(135deg, #ff4b4b, #cc2e2e) !important;
     border-color: #ff4b4b !important;
     color: #ffffff !important;
     box-shadow: 0 0 25px rgba(255, 75, 75, 0.5) !important;
 }
-
-/* Glowing Tech Primary Buttons */
 div.stButton > button[kind="primary"] {
     background: linear-gradient(135deg, #ff4b4b, #d92626);
     color: white;
@@ -134,14 +120,11 @@ div.stButton > button[kind="primary"] {
     transition: all 0.25s ease-in-out;
     box-shadow: 0 4px 15px rgba(255, 75, 75, 0.4);
 }
-
 div.stButton > button[kind="primary"]:hover {
     transform: scale(1.03);
     box-shadow: 0 6px 25px rgba(255, 75, 75, 0.7);
     border-color: #ffffff;
 }
-
-/* Inputs styling */
 .stTextInput > div > div > input, .stFileUploader {
     background-color: rgba(15, 13, 30, 0.8) !important;
     border-radius: 10px !important;
@@ -152,22 +135,21 @@ div.stButton > button[kind="primary"]:hover {
 """, unsafe_allow_html=True)
 
 # ==========================================
-# GOOGLE DRIVE OAUTH SETUP
+# GOOGLE DRIVE OAUTH SETUP (Cloud-Compatible)
 # ==========================================
 SCOPES = ['https://www.googleapis.com/auth/drive']
 creds = None
 
-if os.path.exists('token.json'):
+# 1. Check if running on Streamlit Cloud using st.secrets
+if "google_token" in st.secrets:
+    creds_info = dict(st.secrets["google_token"])
+    creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
+# 2. Fallback for local testing
+elif os.path.exists('token.json'):
     creds = Credentials.from_authorized_user_file('token.json', SCOPES)
 
-if not creds or not creds.valid:
-    if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-    else:
-        flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
-        creds = flow.run_local_server(port=0)
-    with open('token.json', 'w') as token:
-        token.write(creds.to_json())
+if creds and creds.expired and creds.refresh_token:
+    creds.refresh(Request())
 
 drive_service = build('drive', 'v3', credentials=creds)
 MASTER_FOLDER_ID = '1UwuA56of_7fc4WkpuUqqSZSAKsgHqEoE'
@@ -284,9 +266,6 @@ else:
             st.session_state['is_admin'] = 0
             st.rerun()
 
-    # ==========================================
-    # ADMIN PANEL & VAULT INSPECTOR
-    # ==========================================
     target_folder_id = st.session_state['folder_id']
 
     if st.session_state['is_admin'] == 1:
@@ -333,9 +312,6 @@ else:
                     st.info(f"🔍 Inspector active on node partition: **{selected_user_to_view}**")
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # ==========================================
-    # UPLOAD INTERFACE WITH REAL-TIME SPEED
-    # ==========================================
     if target_folder_id == st.session_state['folder_id']:
         st.markdown('<div class="tech-container">', unsafe_allow_html=True)
         st.subheader("📤 Data Stream Ingestion")
@@ -391,9 +367,6 @@ else:
                     st.error(f"Transmission stream interrupted: {e}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ==========================================
-    # VIDEO FEED (Native Streamlit HTML5 Player)
-    # ==========================================
     st.markdown('<div class="tech-container">', unsafe_allow_html=True)
     st.subheader("📺 Active Vault Feed Partition")
     st.markdown('</div>', unsafe_allow_html=True)
