@@ -12,10 +12,68 @@ from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 st.set_page_config(page_title="The Triad Vault", layout="wide")
 
 # ==========================================
+# YOUTUBE-STYLE SLIDING SPLASH SCREEN
+# ==========================================
+if 'has_splashed' not in st.session_state:
+    st.session_state['has_splashed'] = True
+    st.markdown("""
+    <style>
+    #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: #0a0a0f;
+        z-index: 999999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        animation: slideOut 2.2s cubic-bezier(0.8, 0, 0.2, 1) forwards;
+        pointer-events: none;
+    }
+    .splash-logo {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        animation: logoPulse 1.2s ease-in-out forwards;
+    }
+    .play-icon {
+        font-size: 6rem;
+        color: #ff0000;
+        text-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+    }
+    .brand-text {
+        font-size: 4rem;
+        font-weight: 900;
+        color: white;
+        letter-spacing: -2px;
+        font-family: 'Arial', sans-serif;
+    }
+    @keyframes slideOut {
+        0% { transform: translateY(0); opacity: 1; }
+        75% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(-100vh); opacity: 0; display: none; }
+    }
+    @keyframes logoPulse {
+        0% { transform: scale(0.5); opacity: 0; }
+        40% { transform: scale(1.1); opacity: 1; }
+        60% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    </style>
+    <div id="splash-screen">
+        <div class="splash-logo">
+            <span class="play-icon">▶</span>
+            <span class="brand-text">TRIAD</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ==========================================
 # HARDENED DATABASE SETUP (v2)
 # ==========================================
 def init_db():
-    # Swapped to v2 database to bypass the old unencrypted file
     conn = sqlite3.connect('vault_users_v2.db', check_same_thread=False)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
