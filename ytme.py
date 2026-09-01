@@ -118,9 +118,9 @@ st.markdown("""
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 20px;
-    padding: 40px;
+    padding: 30px 20px;
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 25px;
     box-shadow: 0 15px 35px rgba(0,0,0,0.6);
     backdrop-filter: blur(15px);
     animation: floatBanner 6s ease-in-out infinite;
@@ -135,7 +135,7 @@ st.markdown("""
     background-size: 300% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    font-size: 3rem;
+    font-size: 2.8rem;
     font-weight: 800;
     margin: 0;
     animation: textShimmer 5s linear infinite;
@@ -225,6 +225,9 @@ div.stButton > button[kind="secondary"]:hover {
 .video-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px; transition: all 0.3s; height: 100%; backdrop-filter: blur(5px); }
 .video-card:hover { transform: translateY(-5px); border-color: rgba(178, 92, 255, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 .card-title { font-size: 1.1rem; font-weight: 600; color: #ffffff; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Desktop/Mobile Toggle alignment */
+.toggle-container { display: flex; justify-content: flex-end; align-items: center; padding-bottom: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -258,14 +261,29 @@ if 'logged_in' not in st.session_state:
     st.session_state['active_video_name'] = ""
 
 # ==========================================
-# AUTHENTICATION SCREEN (Animated Modern UI)
+# UNIVERSAL DEVICE TOGGLE
+# ==========================================
+t_col1, t_col2 = st.columns([7, 2])
+with t_col2:
+    st.markdown('<div class="toggle-container">', unsafe_allow_html=True)
+    is_mobile = st.toggle("📱 Mobile Layout", help="Toggle for narrow phone screens")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ==========================================
+# AUTHENTICATION SCREEN
 # ==========================================
 if not st.session_state['logged_in']:
     st.markdown('<div class="main-banner"><h2>🌌 Welcome to your Personal Vault ✦ by TRIAD</h2></div>', unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2, gap="large")
+    # Adaptive Layout Logic for Auth
+    if is_mobile:
+        auth_left = st.container()
+        st.markdown("<br>", unsafe_allow_html=True)
+        auth_right = st.container()
+    else:
+        auth_left, auth_right = st.columns(2, gap="large")
     
-    with col1:
+    with auth_left:
         st.markdown('<div class="auth-header"><span class="login-accent">🔓</span> Login Portal <span style="font-size:1rem; opacity:0.6; font-weight:400;">(Existing User)</span></div>', unsafe_allow_html=True)
         with st.form("login_form"):
             login_user = st.text_input("Username")
@@ -307,7 +325,7 @@ if not st.session_state['logged_in']:
                     st.error("❌ Invalid credentials.")
                 conn.close()
 
-    with col2:
+    with auth_right:
         st.markdown('<div class="auth-header"><span class="create-accent">✨</span> Provision Node <span style="font-size:1rem; opacity:0.6; font-weight:400;">(New User)</span></div>', unsafe_allow_html=True)
         with st.form("register_form"):
             reg_user = st.text_input("Choose Username")
@@ -348,20 +366,33 @@ if not st.session_state['logged_in']:
 # MAIN APP INTERFACE
 # ==========================================
 else:
-    col_t1, col_t2 = st.columns([5, 1])
-    with col_t1:
+    # Top Action Bar
+    if is_mobile:
         st.markdown(f'<div class="feed-header"><h2 style="margin:0; font-weight:800;">📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
-    with col_t2:
         if st.button("🚪 Logout", type="secondary"):
             st.session_state.clear()
             st.rerun()
+    else:
+        col_t1, col_t2 = st.columns([6, 1])
+        with col_t1:
+            st.markdown(f'<div class="feed-header"><h2 style="margin:0; font-weight:800;">📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
+        with col_t2:
+            if st.button("🚪 Logout", type="secondary"):
+                st.session_state.clear()
+                st.rerun()
 
     target_folder_id = st.session_state['folder_id']
 
+    # Admin Control Panel
     if st.session_state['is_admin'] == 1:
         st.markdown('<div class="admin-zone">', unsafe_allow_html=True)
         st.write("<h3 style='margin-top:0;'>🛠️ MASTER COMMAND MATRIX</h3>", unsafe_allow_html=True)
-        col_a1, col_a2 = st.columns(2)
+        
+        if is_mobile:
+            col_a1 = st.container()
+            col_a2 = st.container()
+        else:
+            col_a1, col_a2 = st.columns(2)
         
         with col_a1:
             if st.button("🔑 Generate Secure Invite Token", type="primary"):
@@ -385,18 +416,25 @@ else:
                 target_folder_id = all_users[selected_user]
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # File Upload Module
     if target_folder_id == st.session_state['folder_id']:
         st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
         st.write("<h3 style='margin-top:0;'>📤 INGESTION STREAM</h3>", unsafe_allow_html=True)
 
         with st.form("upload_form", clear_on_submit=True):
-            col_u1, col_u2 = st.columns([2, 1])
+            if is_mobile:
+                col_u1 = st.container()
+                col_u2 = st.container()
+            else:
+                col_u1, col_u2 = st.columns([2, 1])
+                
             with col_u1:
                 custom_title = st.text_input("🏷️ Designated Tag Name")
                 uploaded_file = st.file_uploader("🎞️ Video Stream (<100MB)", type=["mp4", "mov"])
             with col_u2:
-                st.write("") 
-                st.write("") 
+                if not is_mobile:
+                    st.write("") 
+                    st.write("") 
                 thumb_file = st.file_uploader("🖼️ Thumbnail (Optional)", type=["jpg", "png", "jpeg"])
             
             st.write("")
@@ -438,6 +476,7 @@ else:
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # Video Grid & Player
     st.markdown('<div class="feed-header"><h3 style="margin:0; font-weight:800;">📺 VAULT GRID</h3></div>', unsafe_allow_html=True)
 
     if st.session_state['active_video_id']:
@@ -479,9 +518,12 @@ else:
     if not videos:
         st.info("🏜️ Grid is currently empty.")
     else:
-        cols = st.columns(3)
+        # Dynamic Grid Logic based on toggle
+        grid_cols_count = 1 if is_mobile else 3
+        cols = st.columns(grid_cols_count)
+        
         for idx, video in enumerate(videos):
-            col = cols[idx % 3]
+            col = cols[idx % grid_cols_count]
             
             with col:
                 st.markdown('<div class="video-card">', unsafe_allow_html=True)
