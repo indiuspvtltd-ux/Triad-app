@@ -12,12 +12,12 @@ from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 st.set_page_config(page_title="The Triad Vault", layout="wide")
 
 # ==========================================
-# HARDENED DATABASE SETUP
+# HARDENED DATABASE SETUP (v2)
 # ==========================================
 def init_db():
-    conn = sqlite3.connect('vault_users.db', check_same_thread=False)
+    # Swapped to v2 database to bypass the old unencrypted file
+    conn = sqlite3.connect('vault_users_v2.db', check_same_thread=False)
     c = conn.cursor()
-    # Added failed_attempts and locked_until for Brute-Force protection
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY, 
                     password TEXT, 
@@ -29,7 +29,6 @@ def init_db():
                     code TEXT PRIMARY KEY, is_used INTEGER)''')
     conn.commit()
     
-    # Create master admin with bcrypt salt
     c.execute("SELECT * FROM users WHERE username = 'admin'")
     if not c.fetchone():
         salt = bcrypt.gensalt()
@@ -89,7 +88,7 @@ if 'logged_in' not in st.session_state:
     st.session_state['active_video_name'] = ""
 
 # ==========================================
-# AUTHENTICATION SCREEN (With Brute Force Protection)
+# AUTHENTICATION SCREEN
 # ==========================================
 if not st.session_state['logged_in']:
     st.markdown('<div class="feed-header"><h2>🔐 TRIAD VAULT ACCESS (ENCRYPTED)</h2></div>', unsafe_allow_html=True)
@@ -102,7 +101,7 @@ if not st.session_state['logged_in']:
             login_user = st.text_input("Username")
             login_pass = st.text_input("Password", type="password")
             if st.form_submit_button("Authenticate", type="primary"):
-                conn = sqlite3.connect('vault_users.db')
+                conn = sqlite3.connect('vault_users_v2.db')
                 c = conn.cursor()
                 c.execute("SELECT password, folder_id, is_admin, failed_attempts, locked_until FROM users WHERE username = ?", (login_user,))
                 result = c.fetchone()
@@ -111,14 +110,11 @@ if not st.session_state['logged_in']:
                     stored_hash, folder_id, is_admin, failed_attempts, locked_until = result
                     current_time = time.time()
                     
-                    # 1. Check if account is locked
                     if locked_until > current_time:
                         remaining_mins = int((locked_until - current_time) / 60)
                         st.error(f"🚨 Security Trigger: Account locked due to suspicious activity. Try again in {remaining_mins} minutes.")
                     else:
-                        # 2. Verify Bcrypt Hash
                         if bcrypt.checkpw(login_pass.encode('utf-8'), stored_hash.encode('utf-8')):
-                            # Success: Reset failed attempts
                             c.execute("UPDATE users SET failed_attempts = 0, locked_until = 0 WHERE username = ?", (login_user,))
                             conn.commit()
                             st.session_state['logged_in'] = True
@@ -127,10 +123,8 @@ if not st.session_state['logged_in']:
                             st.session_state['is_admin'] = is_admin
                             st.rerun()
                         else:
-                            # Failure: Increment attempt counter
                             new_attempts = failed_attempts + 1
                             if new_attempts >= 5:
-                                # Lock account for 15 minutes (900 seconds)
                                 lock_time = current_time + 900
                                 c.execute("UPDATE users SET failed_attempts = ?, locked_until = ? WHERE username = ?", (new_attempts, lock_time, login_user))
                                 st.error("🚨 Account Locked. Too many failed attempts. Try again in 15 minutes.")
@@ -139,7 +133,6 @@ if not st.session_state['logged_in']:
                                 st.error(f"❌ Invalid password. Warning: {5 - new_attempts} attempts remaining before lockdown.")
                             conn.commit()
                 else:
-                    # User does not exist (we use a generic error to prevent account enumeration)
                     st.error("❌ Invalid credentials.")
                 conn.close()
         st.markdown('</div>', unsafe_allow_html=True)
@@ -152,11 +145,10 @@ if not st.session_state['logged_in']:
             reg_pass = st.text_input("Choose Password", type="password")
             reg_code = st.text_input("Invite Code")
             if st.form_submit_button("Initialize Vault"):
-                # Basic password strength check
                 if len(reg_pass) < 6:
                     st.warning("Password must be at least 6 characters long.")
                 else:
-                    conn = sqlite3.connect('vault_users.db')
+                    conn = sqlite3.connect('vault_users_v2.db')
                     c = conn.cursor()
                     c.execute("SELECT is_used FROM invite_codes WHERE code = ?", (reg_code,))
                     code_res = c.fetchone()
@@ -172,7 +164,6 @@ if not st.session_state['logged_in']:
                                 folder_metadata = {'name': f"{reg_user}_Vault", 'mimeType': 'application/vnd.google-apps.folder', 'parents': [MASTER_FOLDER_ID]}
                                 subfolder = drive_service.files().create(body=folder_metadata, fields='id').execute()
                                 
-                                # Bcrypt Hashing for new users
                                 salt = bcrypt.gensalt()
                                 hashed_pw = bcrypt.hashpw(reg_pass.encode('utf-8'), salt).decode('utf-8')
                                 
@@ -207,7 +198,7 @@ else:
             if st.button("Generate Secure Invite Token"):
                 import uuid
                 new_code = f"TRIAD-{str(uuid.uuid4()).upper()[:8]}"
-                conn = sqlite3.connect('vault_users.db')
+                conn = sqlite3.connect('vault_users_v2.db')
                 c = conn.cursor()
                 c.execute("INSERT INTO invite_codes VALUES (?, ?)", (new_code, 0))
                 conn.commit()
@@ -215,7 +206,7 @@ else:
                 st.success(f"**`{new_code}`**")
         
         with col_a2:
-            conn = sqlite3.connect('vault_users.db')
+            conn = sqlite3.connect('vault_users_v2.db')
             c = conn.cursor()
             c.execute("SELECT username, folder_id FROM users")
             all_users = {u[0]: u[1] for u in c.fetchall()}
