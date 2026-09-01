@@ -18,13 +18,15 @@ if 'has_splashed' not in st.session_state:
     st.session_state['has_splashed'] = True
     st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap');
+    
     #splash-screen {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-color: #0a0a0f;
+        background-color: #050508;
         z-index: 999999;
         display: flex;
         justify-content: center;
@@ -40,15 +42,15 @@ if 'has_splashed' not in st.session_state:
     }
     .play-icon {
         font-size: 6rem;
-        color: #ff0000;
-        text-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+        color: #ff2a2a;
+        text-shadow: 0 0 30px rgba(255, 42, 42, 0.6);
     }
     .brand-text {
-        font-size: 4rem;
+        font-size: 4.5rem;
         font-weight: 900;
         color: white;
         letter-spacing: -2px;
-        font-family: 'Arial', sans-serif;
+        font-family: 'Outfit', sans-serif;
     }
     @keyframes slideOut {
         0% { transform: translateY(0); opacity: 1; }
@@ -99,75 +101,130 @@ def init_db():
 init_db()
 
 # ==========================================
-# CUSTOM CSS: Auth Mockup & Vault Theme
+# CUSTOM CSS: Hyper-Modern Animated Glass UI
 # ==========================================
 st.markdown("""
 <style>
-.stApp { background: #0a0a0f; color: #e0e0e0; }
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
 
-/* Main Screen Authentic Mockup CSS */
+.stApp {
+    font-family: 'Outfit', sans-serif !important;
+    background: radial-gradient(circle at top left, #120a21, #050508 70%);
+    color: #e0e0e0;
+}
+
+/* 🌟 Animated Main Banner */
 .main-banner {
-    background: #11081a;
-    border: 1px solid rgba(130, 50, 200, 0.2);
-    border-radius: 8px;
-    padding: 35px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 40px;
     text-align: center;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    margin-bottom: 40px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    backdrop-filter: blur(15px);
+    animation: floatBanner 6s ease-in-out infinite;
+}
+@keyframes floatBanner {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); box-shadow: 0 25px 45px rgba(150,50,255,0.1); }
+    100% { transform: translateY(0px); }
 }
 .main-banner h2 {
-    color: #ffffff;
-    font-size: 2.3rem;
-    font-weight: 700;
+    background: linear-gradient(90deg, #00e5ff, #b25cff, #ffa600, #00e5ff);
+    background-size: 300% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 3rem;
+    font-weight: 800;
     margin: 0;
+    animation: textShimmer 5s linear infinite;
+    letter-spacing: -1px;
 }
-.login-header {
-    background: linear-gradient(90deg, #091a24, #050d12);
-    border-left: 8px solid #00e5ff;
-    border-radius: 6px;
-    padding: 15px 25px;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: white;
-    text-align: center;
-    margin-bottom: 15px;
+@keyframes textShimmer {
+    0% { background-position: 0% center; }
+    100% { background-position: 300% center; }
 }
-.create-header {
-    background: linear-gradient(90deg, #241705, #140d05);
-    border-left: 8px solid #ffa600;
-    border-radius: 6px;
-    padding: 15px 25px;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: white;
-    text-align: center;
-    margin-bottom: 15px;
-}
+
+/* 💎 Glassmorphism Form Containers */
 div[data-testid="stForm"] {
-    background-color: #121216 !important;
-    border: 1px solid #2a2a35 !important;
-    border-radius: 10px;
-    padding: 20px;
+    background: rgba(20, 20, 30, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
 }
+div[data-testid="stForm"]:hover {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-3px);
+}
+
+/* ✨ Inputs & Buttons */
 .stTextInput > div > div > input {
-    background-color: #1e1e24 !important;
-    border: 1px solid #333 !important;
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     color: white !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
+    font-family: 'Outfit', sans-serif !important;
+    transition: all 0.3s ease;
 }
+.stTextInput > div > div > input:focus {
+    border-color: #b25cff !important;
+    box-shadow: 0 0 15px rgba(178, 92, 255, 0.3) !important;
+}
+
+div.stButton > button {
+    border-radius: 8px;
+    font-weight: 600;
+    font-family: 'Outfit', sans-serif !important;
+    width: 100%;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+div.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #ff2a2a, #ff5e5e);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(255, 42, 42, 0.3);
+}
+div.stButton > button[kind="primary"]:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(255, 42, 42, 0.5);
+}
+div.stButton > button[kind="secondary"] {
+    background: rgba(255,255,255,0.05);
+    color: #c0c0c0;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+div.stButton > button[kind="secondary"]:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+/* 📌 Headers for Auth Sections */
+.auth-header {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.login-accent { color: #00e5ff; }
+.create-accent { color: #ffa600; }
 
 /* Vault Grid CSS */
-.admin-zone { background: linear-gradient(90deg, rgba(30,20,0,0.8), rgba(60,35,0,0.8)); border-left: 6px solid #ffaa00; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-.upload-zone { background: linear-gradient(90deg, rgba(0,25,35,0.8), rgba(0,45,60,0.8)); border-left: 6px solid #00eeff; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
-.feed-header { background: rgba(20, 10, 40, 0.9); border: 1px solid rgba(150, 50, 255, 0.3); border-radius: 8px; padding: 15px 25px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
-.video-card { background: #12121a; border: 1px solid #2a2a35; border-radius: 12px; padding: 12px; transition: transform 0.2s, box-shadow 0.2s; height: 100%; }
-.video-card:hover { transform: scale(1.02); border-color: #9632ff; }
-.card-title { font-size: 1.1rem; font-weight: bold; color: #ffffff; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* Buttons */
-div.stButton > button { border-radius: 6px; font-weight: bold; width: 100%; }
-div.stButton > button[kind="primary"] { background: #ff4b4b; color: white; border: none; }
-div.stButton > button[kind="secondary"] { background: #1a1a24; color: #a0a0a0; border: 1px solid #333; }
+.admin-zone { background: rgba(255, 170, 0, 0.05); border-left: 4px solid #ffaa00; border-radius: 12px; padding: 20px; margin-bottom: 20px; backdrop-filter: blur(10px); }
+.upload-zone { background: rgba(0, 238, 255, 0.05); border-left: 4px solid #00eeff; border-radius: 12px; padding: 20px; margin-bottom: 30px; backdrop-filter: blur(10px); }
+.feed-header { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 15px 25px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; text-align: center; backdrop-filter: blur(10px); }
+.video-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px; transition: all 0.3s; height: 100%; backdrop-filter: blur(5px); }
+.video-card:hover { transform: translateY(-5px); border-color: rgba(178, 92, 255, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+.card-title { font-size: 1.1rem; font-weight: 600; color: #ffffff; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -201,19 +258,20 @@ if 'logged_in' not in st.session_state:
     st.session_state['active_video_name'] = ""
 
 # ==========================================
-# AUTHENTICATION SCREEN (Custom Mockup Layout)
+# AUTHENTICATION SCREEN (Animated Modern UI)
 # ==========================================
 if not st.session_state['logged_in']:
-    st.markdown('<div class="main-banner"><h2>welcome to ur personal vault ~~ by triad</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-banner"><h2>🌌 Welcome to your Personal Vault ✦ by TRIAD</h2></div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2, gap="large")
     
     with col1:
-        st.markdown('<div class="login-header">login (existing user)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="auth-header"><span class="login-accent">🔓</span> Login Portal <span style="font-size:1rem; opacity:0.6; font-weight:400;">(Existing User)</span></div>', unsafe_allow_html=True)
         with st.form("login_form"):
             login_user = st.text_input("Username")
             login_pass = st.text_input("Password", type="password")
-            if st.form_submit_button("Authenticate", type="primary"):
+            st.write("") # Spacing
+            if st.form_submit_button("⚡ Authenticate Node", type="primary"):
                 conn = sqlite3.connect('vault_users_v2.db')
                 c = conn.cursor()
                 c.execute("SELECT password, folder_id, is_admin, failed_attempts, locked_until FROM users WHERE username = ?", (login_user,))
@@ -250,13 +308,13 @@ if not st.session_state['logged_in']:
                 conn.close()
 
     with col2:
-        st.markdown('<div class="create-header">create vault (new user)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="auth-header"><span class="create-accent">✨</span> Provision Node <span style="font-size:1rem; opacity:0.6; font-weight:400;">(New User)</span></div>', unsafe_allow_html=True)
         with st.form("register_form"):
             reg_user = st.text_input("Choose Username")
             reg_pass = st.text_input("Choose Password", type="password")
             reg_code = st.text_input("Invite Code")
-            # Defaults to secondary styling (dark grey outline) as shown in the mockup
-            if st.form_submit_button("Initialize Vault"):
+            st.write("") # Spacing
+            if st.form_submit_button("🚀 Initialize Vault", type="secondary"):
                 if len(reg_pass) < 6:
                     st.warning("Password must be at least 6 characters long.")
                 else:
@@ -283,7 +341,7 @@ if not st.session_state['logged_in']:
                                           (reg_user, hashed_pw, subfolder.get('id'), 0, 0, 0))
                                 c.execute("UPDATE invite_codes SET is_used = 1 WHERE code = ?", (reg_code,))
                                 conn.commit()
-                                st.success("Vault securely provisioned! You may now login.")
+                                st.success("🎉 Vault securely provisioned! You may now login.")
                     conn.close()
 
 # ==========================================
@@ -292,7 +350,7 @@ if not st.session_state['logged_in']:
 else:
     col_t1, col_t2 = st.columns([5, 1])
     with col_t1:
-        st.markdown(f'<div class="feed-header"><h2>📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="feed-header"><h2 style="margin:0; font-weight:800;">📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
     with col_t2:
         if st.button("🚪 Logout", type="secondary"):
             st.session_state.clear()
@@ -302,11 +360,11 @@ else:
 
     if st.session_state['is_admin'] == 1:
         st.markdown('<div class="admin-zone">', unsafe_allow_html=True)
-        st.write("### 🛠️ MASTER COMMAND MATRIX")
+        st.write("<h3 style='margin-top:0;'>🛠️ MASTER COMMAND MATRIX</h3>", unsafe_allow_html=True)
         col_a1, col_a2 = st.columns(2)
         
         with col_a1:
-            if st.button("Generate Secure Invite Token", type="primary"):
+            if st.button("🔑 Generate Secure Invite Token", type="primary"):
                 import uuid
                 new_code = f"TRIAD-{str(uuid.uuid4()).upper()[:8]}"
                 conn = sqlite3.connect('vault_users_v2.db')
@@ -322,26 +380,27 @@ else:
             c.execute("SELECT username, folder_id FROM users")
             all_users = {u[0]: u[1] for u in c.fetchall()}
             conn.close()
-            selected_user = st.selectbox("Inspect Node:", list(all_users.keys()))
+            selected_user = st.selectbox("🌐 Inspect Node:", list(all_users.keys()))
             if selected_user:
                 target_folder_id = all_users[selected_user]
         st.markdown('</div>', unsafe_allow_html=True)
 
     if target_folder_id == st.session_state['folder_id']:
         st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
-        st.write("### 📤 INGESTION STREAM")
+        st.write("<h3 style='margin-top:0;'>📤 INGESTION STREAM</h3>", unsafe_allow_html=True)
 
         with st.form("upload_form", clear_on_submit=True):
             col_u1, col_u2 = st.columns([2, 1])
             with col_u1:
-                custom_title = st.text_input("Designated Tag Name")
-                uploaded_file = st.file_uploader("Video Stream (<100MB)", type=["mp4", "mov"])
+                custom_title = st.text_input("🏷️ Designated Tag Name")
+                uploaded_file = st.file_uploader("🎞️ Video Stream (<100MB)", type=["mp4", "mov"])
             with col_u2:
                 st.write("") 
                 st.write("") 
-                thumb_file = st.file_uploader("Thumbnail (Optional)", type=["jpg", "png", "jpeg"])
+                thumb_file = st.file_uploader("🖼️ Thumbnail (Optional)", type=["jpg", "png", "jpeg"])
             
-            submit_button = st.form_submit_button("Initiate Encrypted Upload", type="primary")
+            st.write("")
+            submit_button = st.form_submit_button("⬆️ Initiate Encrypted Upload", type="primary")
 
         if submit_button and uploaded_file and custom_title:
             file_extension = os.path.splitext(uploaded_file.name)[1]
@@ -374,17 +433,17 @@ else:
 
             status_text.empty()
             progress_bar.empty()
-            st.success(f"'{final_name}' locked into vault.")
-            time.sleep(1)
+            st.success(f"✅ '{final_name}' locked into vault.")
+            time.sleep(1.5)
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="feed-header"><h3>📺 VAULT GRID</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="feed-header"><h3 style="margin:0; font-weight:800;">📺 VAULT GRID</h3></div>', unsafe_allow_html=True)
 
     if st.session_state['active_video_id']:
         st.markdown(f"#### 🎬 Now Playing: {st.session_state['active_video_name']}")
         try:
-            with st.spinner("Decrypting stream..."):
+            with st.spinner("Decrypting secure stream..."):
                 request = drive_service.files().get_media(fileId=st.session_state['active_video_id'])
                 fh = io.BytesIO()
                 downloader = MediaIoBaseDownload(fh, request)
@@ -418,7 +477,7 @@ else:
                 pass
 
     if not videos:
-        st.info("Grid is currently empty.")
+        st.info("🏜️ Grid is currently empty.")
     else:
         cols = st.columns(3)
         for idx, video in enumerate(videos):
@@ -439,7 +498,7 @@ else:
                 elif video.get('thumbnailLink'):
                     st.image(video.get('thumbnailLink'), use_container_width=True)
                 else:
-                    st.info("🎥 Processing Thumbnail...")
+                    st.info("⏳ Processing Thumbnail...")
 
                 display_name = os.path.splitext(video['name'])[0]
                 st.markdown(f'<div class="card-title">{display_name}</div>', unsafe_allow_html=True)
