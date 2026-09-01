@@ -101,7 +101,7 @@ def init_db():
 init_db()
 
 # ==========================================
-# CUSTOM CSS: Hyper-Modern Glass UI & Auto-Mobile Responsive
+# CUSTOM CSS: Hyper-Modern Animated Glass UI
 # ==========================================
 st.markdown("""
 <style>
@@ -111,29 +111,6 @@ st.markdown("""
     font-family: 'Outfit', sans-serif !important;
     background: radial-gradient(circle at top left, #120a21, #050508 70%);
     color: #e0e0e0;
-}
-
-/* 📱 AUTO-RESPONSIVE MOBILE STACKING */
-@media (max-width: 900px) {
-    div[data-testid="column"] {
-        width: 100% !important;
-        flex: 1 1 100% !important;
-        min-width: 100% !important;
-        margin-bottom: 25px;
-    }
-    .main-banner h2 {
-        font-size: 2rem !important;
-    }
-    .auth-header {
-        font-size: 1.3rem !important;
-        margin-bottom: 15px !important;
-    }
-    .brand-text {
-        font-size: 3rem !important;
-    }
-    .play-icon {
-        font-size: 4rem !important;
-    }
 }
 
 /* 🌟 Animated Main Banner */
@@ -286,7 +263,6 @@ if 'logged_in' not in st.session_state:
 if not st.session_state['logged_in']:
     st.markdown('<div class="main-banner"><h2>🌌 Welcome to your Personal Vault ✦ by TRIAD</h2></div>', unsafe_allow_html=True)
     
-    # These columns will automatically stack into 1 column on mobile due to the CSS media query above.
     col1, col2 = st.columns(2, gap="large")
     
     with col1:
@@ -372,7 +348,6 @@ if not st.session_state['logged_in']:
 # MAIN APP INTERFACE
 # ==========================================
 else:
-    # Auto-Stacking Header
     col_t1, col_t2 = st.columns([6, 1])
     with col_t1:
         st.markdown(f'<div class="feed-header"><h2 style="margin:0; font-weight:800;">📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
@@ -506,7 +481,6 @@ else:
     if not videos:
         st.info("🏜️ Grid is currently empty.")
     else:
-        # Columns will auto-stack on mobile due to the CSS media query
         cols = st.columns(3)
         
         for idx, video in enumerate(videos):
