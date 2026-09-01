@@ -113,6 +113,29 @@ st.markdown("""
     color: #e0e0e0;
 }
 
+/* 📱 AUTO-RESPONSIVE MOBILE STACKING */
+@media (max-width: 900px) {
+    div[data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 25px;
+    }
+    .main-banner h2 {
+        font-size: 2rem !important;
+    }
+    .auth-header {
+        font-size: 1.3rem !important;
+        margin-bottom: 15px !important;
+    }
+    .brand-text {
+        font-size: 3rem !important;
+    }
+    .play-icon {
+        font-size: 4rem !important;
+    }
+}
+
 /* 🌟 Animated Main Banner */
 .main-banner {
     background: rgba(255, 255, 255, 0.02);
@@ -409,24 +432,33 @@ else:
             file_extension = os.path.splitext(uploaded_file.name)[1]
             final_name = custom_title + file_extension
             
-            # 1. INCREASED CHUNK SIZE: 5MB chunks to prevent mobile overload
-            media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=5*1024*1024, resumable=True)
+            # Adjusted to 2MB to balance stability on mobile and prevent zero division
+            media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=2*1024*1024, resumable=True)
             request = drive_service.files().create(body={'name': final_name, 'parents': [target_folder_id]}, media_body=media, fields='id')
             
             progress_bar = st.progress(0)
             status_text = st.empty()
-            response, start_time = None, time.time()
-            last_ui_update = 0
+            response = None
+            start_time = time.time()
+            
+            # FIX: Initialize the update timer correctly to prevent math crashes
+            last_ui_update = start_time 
             
             while response is None:
                 status, response = request.next_chunk()
                 if status:
                     current_time = time.time()
-                    # 2. THROTTLED UI UPDATES: Only ping the Android screen once every 0.5 seconds
                     if current_time - last_ui_update > 0.5:
                         pct = int(status.resumable_progress / uploaded_file.size * 100)
                         progress_bar.progress(min(pct, 100))
-                        speed = (status.resumable_progress / (current_time - start_time)) / (1024 * 1024)
+                        
+                        # FIX: Added strict safety check to prevent Division by Zero on fast networks
+                        elapsed_time = current_time - start_time
+                        if elapsed_time > 0:
+                            speed = (status.resumable_progress / elapsed_time) / (1024 * 1024)
+                        else:
+                            speed = 0.0
+                            
                         status_text.markdown(f"🚀 `{pct}%` | `⚡ {speed:.2f} MB/s`")
                         last_ui_update = current_time
             
