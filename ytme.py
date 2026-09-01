@@ -101,7 +101,7 @@ def init_db():
 init_db()
 
 # ==========================================
-# CUSTOM CSS: Hyper-Modern Animated Glass UI
+# CUSTOM CSS: Hyper-Modern Glass UI & Auto-Mobile Responsive
 # ==========================================
 st.markdown("""
 <style>
@@ -111,6 +111,29 @@ st.markdown("""
     font-family: 'Outfit', sans-serif !important;
     background: radial-gradient(circle at top left, #120a21, #050508 70%);
     color: #e0e0e0;
+}
+
+/* 📱 AUTO-RESPONSIVE MOBILE STACKING */
+@media (max-width: 900px) {
+    div[data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 25px;
+    }
+    .main-banner h2 {
+        font-size: 2rem !important;
+    }
+    .auth-header {
+        font-size: 1.3rem !important;
+        margin-bottom: 15px !important;
+    }
+    .brand-text {
+        font-size: 3rem !important;
+    }
+    .play-icon {
+        font-size: 4rem !important;
+    }
 }
 
 /* 🌟 Animated Main Banner */
@@ -222,12 +245,9 @@ div.stButton > button[kind="secondary"]:hover {
 .admin-zone { background: rgba(255, 170, 0, 0.05); border-left: 4px solid #ffaa00; border-radius: 12px; padding: 20px; margin-bottom: 20px; backdrop-filter: blur(10px); }
 .upload-zone { background: rgba(0, 238, 255, 0.05); border-left: 4px solid #00eeff; border-radius: 12px; padding: 20px; margin-bottom: 30px; backdrop-filter: blur(10px); }
 .feed-header { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 15px 25px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; text-align: center; backdrop-filter: blur(10px); }
-.video-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px; transition: all 0.3s; height: 100%; backdrop-filter: blur(5px); }
+.video-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px; transition: all 0.3s; height: 100%; backdrop-filter: blur(5px); display: flex; flex-direction: column; justify-content: space-between; }
 .video-card:hover { transform: translateY(-5px); border-color: rgba(178, 92, 255, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 .card-title { font-size: 1.1rem; font-weight: 600; color: #ffffff; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* Desktop/Mobile Toggle alignment */
-.toggle-container { display: flex; justify-content: flex-end; align-items: center; padding-bottom: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -261,34 +281,20 @@ if 'logged_in' not in st.session_state:
     st.session_state['active_video_name'] = ""
 
 # ==========================================
-# UNIVERSAL DEVICE TOGGLE
-# ==========================================
-t_col1, t_col2 = st.columns([7, 2])
-with t_col2:
-    st.markdown('<div class="toggle-container">', unsafe_allow_html=True)
-    is_mobile = st.toggle("📱 Mobile Layout", help="Toggle for narrow phone screens")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ==========================================
 # AUTHENTICATION SCREEN
 # ==========================================
 if not st.session_state['logged_in']:
     st.markdown('<div class="main-banner"><h2>🌌 Welcome to your Personal Vault ✦ by TRIAD</h2></div>', unsafe_allow_html=True)
     
-    # Adaptive Layout Logic for Auth
-    if is_mobile:
-        auth_left = st.container()
-        st.markdown("<br>", unsafe_allow_html=True)
-        auth_right = st.container()
-    else:
-        auth_left, auth_right = st.columns(2, gap="large")
+    # These columns will automatically stack into 1 column on mobile due to the CSS media query above.
+    col1, col2 = st.columns(2, gap="large")
     
-    with auth_left:
+    with col1:
         st.markdown('<div class="auth-header"><span class="login-accent">🔓</span> Login Portal <span style="font-size:1rem; opacity:0.6; font-weight:400;">(Existing User)</span></div>', unsafe_allow_html=True)
         with st.form("login_form"):
             login_user = st.text_input("Username")
             login_pass = st.text_input("Password", type="password")
-            st.write("") # Spacing
+            st.write("") 
             if st.form_submit_button("⚡ Authenticate Node", type="primary"):
                 conn = sqlite3.connect('vault_users_v2.db')
                 c = conn.cursor()
@@ -325,13 +331,13 @@ if not st.session_state['logged_in']:
                     st.error("❌ Invalid credentials.")
                 conn.close()
 
-    with auth_right:
+    with col2:
         st.markdown('<div class="auth-header"><span class="create-accent">✨</span> Provision Node <span style="font-size:1rem; opacity:0.6; font-weight:400;">(New User)</span></div>', unsafe_allow_html=True)
         with st.form("register_form"):
             reg_user = st.text_input("Choose Username")
             reg_pass = st.text_input("Choose Password", type="password")
             reg_code = st.text_input("Invite Code")
-            st.write("") # Spacing
+            st.write("") 
             if st.form_submit_button("🚀 Initialize Vault", type="secondary"):
                 if len(reg_pass) < 6:
                     st.warning("Password must be at least 6 characters long.")
@@ -366,20 +372,14 @@ if not st.session_state['logged_in']:
 # MAIN APP INTERFACE
 # ==========================================
 else:
-    # Top Action Bar
-    if is_mobile:
+    # Auto-Stacking Header
+    col_t1, col_t2 = st.columns([6, 1])
+    with col_t1:
         st.markdown(f'<div class="feed-header"><h2 style="margin:0; font-weight:800;">📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
+    with col_t2:
         if st.button("🚪 Logout", type="secondary"):
             st.session_state.clear()
             st.rerun()
-    else:
-        col_t1, col_t2 = st.columns([6, 1])
-        with col_t1:
-            st.markdown(f'<div class="feed-header"><h2 style="margin:0; font-weight:800;">📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
-        with col_t2:
-            if st.button("🚪 Logout", type="secondary"):
-                st.session_state.clear()
-                st.rerun()
 
     target_folder_id = st.session_state['folder_id']
 
@@ -388,11 +388,7 @@ else:
         st.markdown('<div class="admin-zone">', unsafe_allow_html=True)
         st.write("<h3 style='margin-top:0;'>🛠️ MASTER COMMAND MATRIX</h3>", unsafe_allow_html=True)
         
-        if is_mobile:
-            col_a1 = st.container()
-            col_a2 = st.container()
-        else:
-            col_a1, col_a2 = st.columns(2)
+        col_a1, col_a2 = st.columns(2)
         
         with col_a1:
             if st.button("🔑 Generate Secure Invite Token", type="primary"):
@@ -422,19 +418,13 @@ else:
         st.write("<h3 style='margin-top:0;'>📤 INGESTION STREAM</h3>", unsafe_allow_html=True)
 
         with st.form("upload_form", clear_on_submit=True):
-            if is_mobile:
-                col_u1 = st.container()
-                col_u2 = st.container()
-            else:
-                col_u1, col_u2 = st.columns([2, 1])
-                
+            col_u1, col_u2 = st.columns([2, 1])
             with col_u1:
                 custom_title = st.text_input("🏷️ Designated Tag Name")
                 uploaded_file = st.file_uploader("🎞️ Video Stream (<100MB)", type=["mp4", "mov"])
             with col_u2:
-                if not is_mobile:
-                    st.write("") 
-                    st.write("") 
+                st.write("") 
+                st.write("") 
                 thumb_file = st.file_uploader("🖼️ Thumbnail (Optional)", type=["jpg", "png", "jpeg"])
             
             st.write("")
@@ -459,7 +449,6 @@ else:
                     status_text.markdown(f"🚀 `{pct}%` | `⚡ {speed:.2f} MB/s`")
             
             video_id = response.get('id')
-            # SECURITY PATCH: Public permissions creation removed here. File remains securely locked to the service account.
             
             if thumb_file:
                 status_text.markdown("📸 Processing custom thumbnail...")
@@ -467,7 +456,6 @@ else:
                 thumb_metadata = {'name': f"thumb_{video_id}{thumb_ext}", 'parents': [target_folder_id]}
                 thumb_media = MediaIoBaseUpload(thumb_file, mimetype=thumb_file.type, resumable=True)
                 thumb_resp = drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
-                # SECURITY PATCH: Public permissions creation removed here. Thumbnail remains strictly private.
 
             status_text.empty()
             progress_bar.empty()
@@ -518,12 +506,11 @@ else:
     if not videos:
         st.info("🏜️ Grid is currently empty.")
     else:
-        # Dynamic Grid Logic based on toggle
-        grid_cols_count = 1 if is_mobile else 3
-        cols = st.columns(grid_cols_count)
+        # Columns will auto-stack on mobile due to the CSS media query
+        cols = st.columns(3)
         
         for idx, video in enumerate(videos):
-            col = cols[idx % grid_cols_count]
+            col = cols[idx % 3]
             
             with col:
                 st.markdown('<div class="video-card">', unsafe_allow_html=True)
@@ -538,8 +525,6 @@ else:
                     thumb_fh.seek(0)
                     st.image(thumb_fh, use_container_width=True)
                 elif video.get('thumbnailLink'):
-                    # Note: Auto-generated Google thumbnails may not display properly for private files via this method.
-                    # It is recommended to use the custom thumbnail uploader for a flawless private experience.
                     st.image(video.get('thumbnailLink'), use_container_width=True)
                 else:
                     st.info("⏳ Processing Thumbnail...")
