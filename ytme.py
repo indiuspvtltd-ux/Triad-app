@@ -2,8 +2,8 @@ import streamlit as st
 import os
 import io
 import sqlite3
-import hashlib
 import time
+import bcrypt
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -12,20 +12,30 @@ from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 st.set_page_config(page_title="The Triad Vault", layout="wide")
 
 # ==========================================
-# DATABASE SETUP
+# HARDENED DATABASE SETUP
 # ==========================================
 def init_db():
     conn = sqlite3.connect('vault_users.db', check_same_thread=False)
     c = conn.cursor()
+    # Added failed_attempts and locked_until for Brute-Force protection
     c.execute('''CREATE TABLE IF NOT EXISTS users (
-                    username TEXT PRIMARY KEY, password TEXT, folder_id TEXT, is_admin INTEGER)''')
+                    username TEXT PRIMARY KEY, 
+                    password TEXT, 
+                    folder_id TEXT, 
+                    is_admin INTEGER,
+                    failed_attempts INTEGER DEFAULT 0,
+                    locked_until REAL DEFAULT 0)''')
     c.execute('''CREATE TABLE IF NOT EXISTS invite_codes (
                     code TEXT PRIMARY KEY, is_used INTEGER)''')
     conn.commit()
+    
+    # Create master admin with bcrypt salt
     c.execute("SELECT * FROM users WHERE username = 'admin'")
     if not c.fetchone():
-        hashed_pw = hashlib.sha256('admin123'.encode()).hexdigest()
-        c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", ('admin', hashed_pw, '1UwuA56of_7fc4WkpuUqqSZSAKsgHqEoE', 1))
+        salt = bcrypt.gensalt()
+        hashed_pw = bcrypt.hashpw('admin123'.encode('utf-8'), salt).decode('utf-8')
+        c.execute("INSERT INTO users (username, password, folder_id, is_admin, failed_attempts, locked_until) VALUES (?, ?, ?, ?, ?, ?)", 
+                  ('admin', hashed_pw, '1UwuA56of_7fc4WkpuUqqSZSAKsgHqEoE', 1, 0, 0))
         conn.commit()
     conn.close()
 
@@ -36,83 +46,16 @@ init_db()
 # ==========================================
 st.markdown("""
 <style>
-/* Base Dark Theme */
-.stApp {
-    background: #0a0a0f;
-    color: #e0e0e0;
-}
-
-/* 1. Admin Zone (Warning/Amber Theme) */
-.admin-zone {
-    background: linear-gradient(90deg, rgba(30,20,0,0.8), rgba(60,35,0,0.8));
-    border-left: 6px solid #ffaa00;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 15px rgba(255, 170, 0, 0.15);
-}
-
-/* 2. Upload Zone (Cyan/Tech Theme) */
-.upload-zone {
-    background: linear-gradient(90deg, rgba(0,25,35,0.8), rgba(0,45,60,0.8));
-    border-left: 6px solid #00eeff;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 15px rgba(0, 238, 255, 0.15);
-}
-
-/* 3. Feed/Player Zone (Purple/Cinematic Theme) */
-.feed-header {
-    background: rgba(20, 10, 40, 0.9);
-    border: 1px solid rgba(150, 50, 255, 0.3);
-    border-radius: 8px;
-    padding: 15px 25px;
-    margin-bottom: 20px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    text-align: center;
-    box-shadow: 0 0 20px rgba(150, 50, 255, 0.2);
-}
-
-/* Video Thumbnail Cards (YouTube Style) */
-.video-card {
-    background: #12121a;
-    border: 1px solid #2a2a35;
-    border-radius: 12px;
-    padding: 12px;
-    transition: transform 0.2s, box-shadow 0.2s;
-    height: 100%;
-}
-.video-card:hover {
-    transform: scale(1.02);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-    border-color: #9632ff;
-}
-.card-title {
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: #ffffff;
-    margin: 10px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Button Reskins */
-div.stButton > button {
-    border-radius: 6px;
-    font-weight: bold;
-    width: 100%;
-}
-div.stButton > button[kind="primary"] {
-    background: #9632ff;
-    color: white;
-    border: none;
-}
-div.stButton > button[kind="primary"]:hover {
-    background: #b05aff;
-}
+.stApp { background: #0a0a0f; color: #e0e0e0; }
+.admin-zone { background: linear-gradient(90deg, rgba(30,20,0,0.8), rgba(60,35,0,0.8)); border-left: 6px solid #ffaa00; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.15); }
+.upload-zone { background: linear-gradient(90deg, rgba(0,25,35,0.8), rgba(0,45,60,0.8)); border-left: 6px solid #00eeff; border-radius: 8px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0, 238, 255, 0.15); }
+.feed-header { background: rgba(20, 10, 40, 0.9); border: 1px solid rgba(150, 50, 255, 0.3); border-radius: 8px; padding: 15px 25px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; text-align: center; box-shadow: 0 0 20px rgba(150, 50, 255, 0.2); }
+.video-card { background: #12121a; border: 1px solid #2a2a35; border-radius: 12px; padding: 12px; transition: transform 0.2s, box-shadow 0.2s; height: 100%; }
+.video-card:hover { transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: #9632ff; }
+.card-title { font-size: 1.1rem; font-weight: bold; color: #ffffff; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+div.stButton > button { border-radius: 6px; font-weight: bold; width: 100%; }
+div.stButton > button[kind="primary"] { background: #9632ff; color: white; border: none; }
+div.stButton > button[kind="primary"]:hover { background: #b05aff; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -135,7 +78,7 @@ drive_service = build('drive', 'v3', credentials=creds)
 MASTER_FOLDER_ID = '1UwuA56of_7fc4WkpuUqqSZSAKsgHqEoE'
 
 # ==========================================
-# SESSION STATE
+# SECURE SESSION STATE
 # ==========================================
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
@@ -146,10 +89,10 @@ if 'logged_in' not in st.session_state:
     st.session_state['active_video_name'] = ""
 
 # ==========================================
-# AUTHENTICATION SCREEN
+# AUTHENTICATION SCREEN (With Brute Force Protection)
 # ==========================================
 if not st.session_state['logged_in']:
-    st.markdown('<div class="feed-header"><h2>🔐 TRIAD VAULT ACCESS</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="feed-header"><h2>🔐 TRIAD VAULT ACCESS (ENCRYPTED)</h2></div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
@@ -161,18 +104,44 @@ if not st.session_state['logged_in']:
             if st.form_submit_button("Authenticate", type="primary"):
                 conn = sqlite3.connect('vault_users.db')
                 c = conn.cursor()
-                hashed_pw = hashlib.sha256(login_pass.encode()).hexdigest()
-                c.execute("SELECT folder_id, is_admin FROM users WHERE username = ? AND password = ?", (login_user, hashed_pw))
+                c.execute("SELECT password, folder_id, is_admin, failed_attempts, locked_until FROM users WHERE username = ?", (login_user,))
                 result = c.fetchone()
-                conn.close()
+                
                 if result:
-                    st.session_state['logged_in'] = True
-                    st.session_state['username'] = login_user
-                    st.session_state['folder_id'] = result[0]
-                    st.session_state['is_admin'] = result[1]
-                    st.rerun()
+                    stored_hash, folder_id, is_admin, failed_attempts, locked_until = result
+                    current_time = time.time()
+                    
+                    # 1. Check if account is locked
+                    if locked_until > current_time:
+                        remaining_mins = int((locked_until - current_time) / 60)
+                        st.error(f"🚨 Security Trigger: Account locked due to suspicious activity. Try again in {remaining_mins} minutes.")
+                    else:
+                        # 2. Verify Bcrypt Hash
+                        if bcrypt.checkpw(login_pass.encode('utf-8'), stored_hash.encode('utf-8')):
+                            # Success: Reset failed attempts
+                            c.execute("UPDATE users SET failed_attempts = 0, locked_until = 0 WHERE username = ?", (login_user,))
+                            conn.commit()
+                            st.session_state['logged_in'] = True
+                            st.session_state['username'] = login_user
+                            st.session_state['folder_id'] = folder_id
+                            st.session_state['is_admin'] = is_admin
+                            st.rerun()
+                        else:
+                            # Failure: Increment attempt counter
+                            new_attempts = failed_attempts + 1
+                            if new_attempts >= 5:
+                                # Lock account for 15 minutes (900 seconds)
+                                lock_time = current_time + 900
+                                c.execute("UPDATE users SET failed_attempts = ?, locked_until = ? WHERE username = ?", (new_attempts, lock_time, login_user))
+                                st.error("🚨 Account Locked. Too many failed attempts. Try again in 15 minutes.")
+                            else:
+                                c.execute("UPDATE users SET failed_attempts = ? WHERE username = ?", (new_attempts, login_user))
+                                st.error(f"❌ Invalid password. Warning: {5 - new_attempts} attempts remaining before lockdown.")
+                            conn.commit()
                 else:
-                    st.error("Invalid credentials.")
+                    # User does not exist (we use a generic error to prevent account enumeration)
+                    st.error("❌ Invalid credentials.")
+                conn.close()
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
@@ -183,34 +152,42 @@ if not st.session_state['logged_in']:
             reg_pass = st.text_input("Choose Password", type="password")
             reg_code = st.text_input("Invite Code")
             if st.form_submit_button("Initialize Vault"):
-                conn = sqlite3.connect('vault_users.db')
-                c = conn.cursor()
-                c.execute("SELECT is_used FROM invite_codes WHERE code = ?", (reg_code,))
-                code_res = c.fetchone()
-                if not code_res or code_res[0] == 1:
-                    st.error("Invalid or used code.")
+                # Basic password strength check
+                if len(reg_pass) < 6:
+                    st.warning("Password must be at least 6 characters long.")
                 else:
-                    c.execute("SELECT * FROM users WHERE username = ?", (reg_user,))
-                    if c.fetchone():
-                        st.error("Username taken.")
+                    conn = sqlite3.connect('vault_users.db')
+                    c = conn.cursor()
+                    c.execute("SELECT is_used FROM invite_codes WHERE code = ?", (reg_code,))
+                    code_res = c.fetchone()
+                    
+                    if not code_res or code_res[0] == 1:
+                        st.error("Invalid or used code.")
                     else:
-                        with st.spinner("Carving sub-vault..."):
-                            folder_metadata = {'name': f"{reg_user}_Vault", 'mimeType': 'application/vnd.google-apps.folder', 'parents': [MASTER_FOLDER_ID]}
-                            subfolder = drive_service.files().create(body=folder_metadata, fields='id').execute()
-                            
-                            hashed_pw = hashlib.sha256(reg_pass.encode()).hexdigest()
-                            c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", (reg_user, hashed_pw, subfolder.get('id'), 0))
-                            c.execute("UPDATE invite_codes SET is_used = 1 WHERE code = ?", (reg_code,))
-                            conn.commit()
-                            st.success("Vault provisioned! You may now login.")
-                conn.close()
+                        c.execute("SELECT * FROM users WHERE username = ?", (reg_user,))
+                        if c.fetchone():
+                            st.error("Username taken.")
+                        else:
+                            with st.spinner("Carving sub-vault & encrypting credentials..."):
+                                folder_metadata = {'name': f"{reg_user}_Vault", 'mimeType': 'application/vnd.google-apps.folder', 'parents': [MASTER_FOLDER_ID]}
+                                subfolder = drive_service.files().create(body=folder_metadata, fields='id').execute()
+                                
+                                # Bcrypt Hashing for new users
+                                salt = bcrypt.gensalt()
+                                hashed_pw = bcrypt.hashpw(reg_pass.encode('utf-8'), salt).decode('utf-8')
+                                
+                                c.execute("INSERT INTO users (username, password, folder_id, is_admin, failed_attempts, locked_until) VALUES (?, ?, ?, ?, ?, ?)", 
+                                          (reg_user, hashed_pw, subfolder.get('id'), 0, 0, 0))
+                                c.execute("UPDATE invite_codes SET is_used = 1 WHERE code = ?", (reg_code,))
+                                conn.commit()
+                                st.success("Vault securely provisioned! You may now login.")
+                    conn.close()
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # MAIN APP INTERFACE
 # ==========================================
 else:
-    # Header & Logout
     col_t1, col_t2 = st.columns([5, 1])
     with col_t1:
         st.markdown(f'<div class="feed-header"><h2>📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
@@ -221,16 +198,13 @@ else:
 
     target_folder_id = st.session_state['folder_id']
 
-    # ==========================================
-    # ADMIN ZONE (Distinct Amber)
-    # ==========================================
     if st.session_state['is_admin'] == 1:
         st.markdown('<div class="admin-zone">', unsafe_allow_html=True)
         st.write("### 🛠️ MASTER COMMAND MATRIX")
         col_a1, col_a2 = st.columns(2)
         
         with col_a1:
-            if st.button("Generate New Invite Token"):
+            if st.button("Generate Secure Invite Token"):
                 import uuid
                 new_code = f"TRIAD-{str(uuid.uuid4()).upper()[:8]}"
                 conn = sqlite3.connect('vault_users.db')
@@ -251,9 +225,6 @@ else:
                 target_folder_id = all_users[selected_user]
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ==========================================
-    # UPLOAD ZONE (Distinct Cyan)
-    # ==========================================
     if target_folder_id == st.session_state['folder_id']:
         st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
         st.write("### 📤 INGESTION STREAM")
@@ -268,10 +239,9 @@ else:
                 st.write("") 
                 thumb_file = st.file_uploader("Thumbnail (Optional)", type=["jpg", "png", "jpeg"])
             
-            submit_button = st.form_submit_button("Initiate Upload", type="primary")
+            submit_button = st.form_submit_button("Initiate Encrypted Upload", type="primary")
 
         if submit_button and uploaded_file and custom_title:
-            # 1. Upload Video
             file_extension = os.path.splitext(uploaded_file.name)[1]
             final_name = custom_title + file_extension
             media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=1024*1024, resumable=True)
@@ -292,7 +262,6 @@ else:
             video_id = response.get('id')
             drive_service.permissions().create(fileId=video_id, body={'type': 'anyone', 'role': 'reader'}).execute()
             
-            # 2. Upload Thumbnail if provided (named "thumb_{video_id}.ext")
             if thumb_file:
                 status_text.markdown("📸 Processing custom thumbnail...")
                 thumb_ext = os.path.splitext(thumb_file.name)[1]
@@ -308,16 +277,12 @@ else:
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ==========================================
-    # VIDEO GRID & LAZY PLAYER (YouTube Style)
-    # ==========================================
     st.markdown('<div class="feed-header"><h3>📺 VAULT GRID</h3></div>', unsafe_allow_html=True)
 
-    # Cinematic Player Engine (Only loads if a video is clicked)
     if st.session_state['active_video_id']:
         st.markdown(f"#### 🎬 Now Playing: {st.session_state['active_video_name']}")
         try:
-            with st.spinner("Buffering secure stream..."):
+            with st.spinner("Decrypting stream..."):
                 request = drive_service.files().get_media(fileId=st.session_state['active_video_id'])
                 fh = io.BytesIO()
                 downloader = MediaIoBaseDownload(fh, request)
@@ -334,17 +299,13 @@ else:
             st.rerun()
         st.markdown("---")
 
-    # Fetch ALL files (videos + custom thumbnails) and include thumbnailLink
     results = drive_service.files().list(
         q=f"'{target_folder_id}' in parents and trashed=false",
         fields="files(id, name, mimeType, thumbnailLink)"
     ).execute()
     items = results.get('files', [])
 
-    # Separate videos and custom thumbnails mapping
     videos = [i for i in items if 'video/' in i.get('mimeType', '')]
-    
-    # Map video_id to its custom thumbnail file dictionary
     custom_thumbs = {}
     for i in items:
         if i['name'].startswith('thumb_'):
@@ -357,19 +318,15 @@ else:
     if not videos:
         st.info("Grid is currently empty.")
     else:
-        # Create a 3-column grid
         cols = st.columns(3)
-        
         for idx, video in enumerate(videos):
-            col = cols[idx % 3] # Distribute evenly across 3 columns
+            col = cols[idx % 3]
             
             with col:
                 st.markdown('<div class="video-card">', unsafe_allow_html=True)
                 
-                # 1. Render Thumbnail
                 vid_id = video['id']
                 if vid_id in custom_thumbs:
-                    # Download custom thumbnail directly into memory to display securely
                     thumb_request = drive_service.files().get_media(fileId=custom_thumbs[vid_id]['id'])
                     thumb_fh = io.BytesIO()
                     thumb_downloader = MediaIoBaseDownload(thumb_fh, thumb_request)
@@ -378,13 +335,10 @@ else:
                     thumb_fh.seek(0)
                     st.image(thumb_fh, use_container_width=True)
                 elif video.get('thumbnailLink'):
-                    # Use Google's auto-generated thumbnail URL if no custom one exists
                     st.image(video.get('thumbnailLink'), use_container_width=True)
                 else:
-                    # Fallback if Google hasn't processed the thumbnail yet
                     st.info("🎥 Processing Thumbnail...")
 
-                # 2. Render Title & Buttons
                 display_name = os.path.splitext(video['name'])[0]
                 st.markdown(f'<div class="card-title">{display_name}</div>', unsafe_allow_html=True)
                 
@@ -397,7 +351,6 @@ else:
                 with button_col2:
                     if st.button("🗑️", key=f"del_{vid_id}"):
                         drive_service.files().delete(fileId=vid_id).execute()
-                        # Also delete custom thumbnail if it exists to save space
                         if vid_id in custom_thumbs:
                             drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
                         if st.session_state['active_video_id'] == vid_id:
