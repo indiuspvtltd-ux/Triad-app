@@ -408,20 +408,27 @@ else:
         if submit_button and uploaded_file and custom_title:
             file_extension = os.path.splitext(uploaded_file.name)[1]
             final_name = custom_title + file_extension
-            media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=1024*1024, resumable=True)
+            
+            # 1. INCREASED CHUNK SIZE: 5MB chunks to prevent mobile overload
+            media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=5*1024*1024, resumable=True)
             request = drive_service.files().create(body={'name': final_name, 'parents': [target_folder_id]}, media_body=media, fields='id')
             
             progress_bar = st.progress(0)
             status_text = st.empty()
             response, start_time = None, time.time()
+            last_ui_update = 0
             
             while response is None:
                 status, response = request.next_chunk()
                 if status:
-                    pct = int(status.resumable_progress / uploaded_file.size * 100)
-                    progress_bar.progress(min(pct, 100))
-                    speed = (status.resumable_progress / (time.time() - start_time)) / (1024 * 1024)
-                    status_text.markdown(f"🚀 `{pct}%` | `⚡ {speed:.2f} MB/s`")
+                    current_time = time.time()
+                    # 2. THROTTLED UI UPDATES: Only ping the Android screen once every 0.5 seconds
+                    if current_time - last_ui_update > 0.5:
+                        pct = int(status.resumable_progress / uploaded_file.size * 100)
+                        progress_bar.progress(min(pct, 100))
+                        speed = (status.resumable_progress / (current_time - start_time)) / (1024 * 1024)
+                        status_text.markdown(f"🚀 `{pct}%` | `⚡ {speed:.2f} MB/s`")
+                        last_ui_update = current_time
             
             video_id = response.get('id')
             
