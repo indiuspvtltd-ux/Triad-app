@@ -371,8 +371,9 @@ else:
     st.subheader("📺 Active Vault Feed Partition")
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # UPDATED QUERY: Filters specifically for video files to prevent the 403 decoder error
     results = drive_service.files().list(
-        q=f"'{target_folder_id}' in parents and trashed=false",
+        q=f"'{target_folder_id}' in parents and trashed=false and mimeType contains 'video/'",
         fields="files(id, name)"
     ).execute()
 
