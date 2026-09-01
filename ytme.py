@@ -99,20 +99,75 @@ def init_db():
 init_db()
 
 # ==========================================
-# CUSTOM CSS: Unique Zones & YouTube Grid
+# CUSTOM CSS: Auth Mockup & Vault Theme
 # ==========================================
 st.markdown("""
 <style>
 .stApp { background: #0a0a0f; color: #e0e0e0; }
-.admin-zone { background: linear-gradient(90deg, rgba(30,20,0,0.8), rgba(60,35,0,0.8)); border-left: 6px solid #ffaa00; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.15); }
-.upload-zone { background: linear-gradient(90deg, rgba(0,25,35,0.8), rgba(0,45,60,0.8)); border-left: 6px solid #00eeff; border-radius: 8px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0, 238, 255, 0.15); }
-.feed-header { background: rgba(20, 10, 40, 0.9); border: 1px solid rgba(150, 50, 255, 0.3); border-radius: 8px; padding: 15px 25px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; text-align: center; box-shadow: 0 0 20px rgba(150, 50, 255, 0.2); }
+
+/* Main Screen Authentic Mockup CSS */
+.main-banner {
+    background: #11081a;
+    border: 1px solid rgba(130, 50, 200, 0.2);
+    border-radius: 8px;
+    padding: 35px;
+    text-align: center;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.main-banner h2 {
+    color: #ffffff;
+    font-size: 2.3rem;
+    font-weight: 700;
+    margin: 0;
+}
+.login-header {
+    background: linear-gradient(90deg, #091a24, #050d12);
+    border-left: 8px solid #00e5ff;
+    border-radius: 6px;
+    padding: 15px 25px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+    margin-bottom: 15px;
+}
+.create-header {
+    background: linear-gradient(90deg, #241705, #140d05);
+    border-left: 8px solid #ffa600;
+    border-radius: 6px;
+    padding: 15px 25px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+    margin-bottom: 15px;
+}
+div[data-testid="stForm"] {
+    background-color: #121216 !important;
+    border: 1px solid #2a2a35 !important;
+    border-radius: 10px;
+    padding: 20px;
+}
+.stTextInput > div > div > input {
+    background-color: #1e1e24 !important;
+    border: 1px solid #333 !important;
+    color: white !important;
+    border-radius: 6px !important;
+}
+
+/* Vault Grid CSS */
+.admin-zone { background: linear-gradient(90deg, rgba(30,20,0,0.8), rgba(60,35,0,0.8)); border-left: 6px solid #ffaa00; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+.upload-zone { background: linear-gradient(90deg, rgba(0,25,35,0.8), rgba(0,45,60,0.8)); border-left: 6px solid #00eeff; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+.feed-header { background: rgba(20, 10, 40, 0.9); border: 1px solid rgba(150, 50, 255, 0.3); border-radius: 8px; padding: 15px 25px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
 .video-card { background: #12121a; border: 1px solid #2a2a35; border-radius: 12px; padding: 12px; transition: transform 0.2s, box-shadow 0.2s; height: 100%; }
-.video-card:hover { transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: #9632ff; }
+.video-card:hover { transform: scale(1.02); border-color: #9632ff; }
 .card-title { font-size: 1.1rem; font-weight: bold; color: #ffffff; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Buttons */
 div.stButton > button { border-radius: 6px; font-weight: bold; width: 100%; }
-div.stButton > button[kind="primary"] { background: #9632ff; color: white; border: none; }
-div.stButton > button[kind="primary"]:hover { background: #b05aff; }
+div.stButton > button[kind="primary"] { background: #ff4b4b; color: white; border: none; }
+div.stButton > button[kind="secondary"] { background: #1a1a24; color: #a0a0a0; border: 1px solid #333; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -146,15 +201,15 @@ if 'logged_in' not in st.session_state:
     st.session_state['active_video_name'] = ""
 
 # ==========================================
-# AUTHENTICATION SCREEN
+# AUTHENTICATION SCREEN (Custom Mockup Layout)
 # ==========================================
 if not st.session_state['logged_in']:
-    st.markdown('<div class="feed-header"><h2>🔐 TRIAD VAULT ACCESS (ENCRYPTED)</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-banner"><h2>welcome to ur personal vault ~~ by triad</h2></div>', unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2, gap="large")
+    
     with col1:
-        st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
-        st.subheader("Login Node")
+        st.markdown('<div class="login-header">login (existing user)</div>', unsafe_allow_html=True)
         with st.form("login_form"):
             login_user = st.text_input("Username")
             login_pass = st.text_input("Password", type="password")
@@ -170,7 +225,7 @@ if not st.session_state['logged_in']:
                     
                     if locked_until > current_time:
                         remaining_mins = int((locked_until - current_time) / 60)
-                        st.error(f"🚨 Security Trigger: Account locked due to suspicious activity. Try again in {remaining_mins} minutes.")
+                        st.error(f"🚨 Security Trigger: Account locked. Try again in {remaining_mins} minutes.")
                     else:
                         if bcrypt.checkpw(login_pass.encode('utf-8'), stored_hash.encode('utf-8')):
                             c.execute("UPDATE users SET failed_attempts = 0, locked_until = 0 WHERE username = ?", (login_user,))
@@ -185,23 +240,22 @@ if not st.session_state['logged_in']:
                             if new_attempts >= 5:
                                 lock_time = current_time + 900
                                 c.execute("UPDATE users SET failed_attempts = ?, locked_until = ? WHERE username = ?", (new_attempts, lock_time, login_user))
-                                st.error("🚨 Account Locked. Too many failed attempts. Try again in 15 minutes.")
+                                st.error("🚨 Account Locked. Try again in 15 minutes.")
                             else:
                                 c.execute("UPDATE users SET failed_attempts = ? WHERE username = ?", (new_attempts, login_user))
-                                st.error(f"❌ Invalid password. Warning: {5 - new_attempts} attempts remaining before lockdown.")
+                                st.error(f"❌ Invalid password. {5 - new_attempts} attempts remaining.")
                             conn.commit()
                 else:
                     st.error("❌ Invalid credentials.")
                 conn.close()
-        st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown('<div class="admin-zone">', unsafe_allow_html=True)
-        st.subheader("Provision Node")
+        st.markdown('<div class="create-header">create vault (new user)</div>', unsafe_allow_html=True)
         with st.form("register_form"):
             reg_user = st.text_input("Choose Username")
             reg_pass = st.text_input("Choose Password", type="password")
             reg_code = st.text_input("Invite Code")
+            # Defaults to secondary styling (dark grey outline) as shown in the mockup
             if st.form_submit_button("Initialize Vault"):
                 if len(reg_pass) < 6:
                     st.warning("Password must be at least 6 characters long.")
@@ -231,7 +285,6 @@ if not st.session_state['logged_in']:
                                 conn.commit()
                                 st.success("Vault securely provisioned! You may now login.")
                     conn.close()
-        st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # MAIN APP INTERFACE
@@ -241,7 +294,7 @@ else:
     with col_t1:
         st.markdown(f'<div class="feed-header"><h2>📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
     with col_t2:
-        if st.button("🚪 Logout"):
+        if st.button("🚪 Logout", type="secondary"):
             st.session_state.clear()
             st.rerun()
 
@@ -253,7 +306,7 @@ else:
         col_a1, col_a2 = st.columns(2)
         
         with col_a1:
-            if st.button("Generate Secure Invite Token"):
+            if st.button("Generate Secure Invite Token", type="primary"):
                 import uuid
                 new_code = f"TRIAD-{str(uuid.uuid4()).upper()[:8]}"
                 conn = sqlite3.connect('vault_users_v2.db')
@@ -343,7 +396,7 @@ else:
         except Exception as e:
             st.error(f"Stream decoder error: {e}")
         
-        if st.button("❌ Close Player"):
+        if st.button("❌ Close Player", type="secondary"):
             st.session_state['active_video_id'] = None
             st.rerun()
         st.markdown("---")
@@ -398,7 +451,7 @@ else:
                         st.session_state['active_video_name'] = display_name
                         st.rerun()
                 with button_col2:
-                    if st.button("🗑️", key=f"del_{vid_id}"):
+                    if st.button("🗑️", key=f"del_{vid_id}", type="secondary"):
                         drive_service.files().delete(fileId=vid_id).execute()
                         if vid_id in custom_thumbs:
                             drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
