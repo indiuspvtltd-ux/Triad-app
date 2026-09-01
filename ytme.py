@@ -459,7 +459,7 @@ else:
                     status_text.markdown(f"🚀 `{pct}%` | `⚡ {speed:.2f} MB/s`")
             
             video_id = response.get('id')
-            drive_service.permissions().create(fileId=video_id, body={'type': 'anyone', 'role': 'reader'}).execute()
+            # SECURITY PATCH: Public permissions creation removed here. File remains securely locked to the service account.
             
             if thumb_file:
                 status_text.markdown("📸 Processing custom thumbnail...")
@@ -467,7 +467,7 @@ else:
                 thumb_metadata = {'name': f"thumb_{video_id}{thumb_ext}", 'parents': [target_folder_id]}
                 thumb_media = MediaIoBaseUpload(thumb_file, mimetype=thumb_file.type, resumable=True)
                 thumb_resp = drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
-                drive_service.permissions().create(fileId=thumb_resp.get('id'), body={'type': 'anyone', 'role': 'reader'}).execute()
+                # SECURITY PATCH: Public permissions creation removed here. Thumbnail remains strictly private.
 
             status_text.empty()
             progress_bar.empty()
@@ -538,6 +538,8 @@ else:
                     thumb_fh.seek(0)
                     st.image(thumb_fh, use_container_width=True)
                 elif video.get('thumbnailLink'):
+                    # Note: Auto-generated Google thumbnails may not display properly for private files via this method.
+                    # It is recommended to use the custom thumbnail uploader for a flawless private experience.
                     st.image(video.get('thumbnailLink'), use_container_width=True)
                 else:
                     st.info("⏳ Processing Thumbnail...")
