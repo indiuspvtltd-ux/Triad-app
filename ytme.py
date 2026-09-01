@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import os
 import io
 import sqlite3
@@ -10,27 +9,19 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
-st.set_page_config(page_title="The Triad Vault System", layout="centered")
+st.set_page_config(page_title="The Triad Vault", layout="wide")
 
 # ==========================================
-# DATABASE SETUP (Users & Invite Keys)
+# DATABASE SETUP
 # ==========================================
 def init_db():
     conn = sqlite3.connect('vault_users.db', check_same_thread=False)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
-                    username TEXT PRIMARY KEY, 
-                    password TEXT, 
-                    folder_id TEXT, 
-                    is_admin INTEGER
-                )''')
+                    username TEXT PRIMARY KEY, password TEXT, folder_id TEXT, is_admin INTEGER)''')
     c.execute('''CREATE TABLE IF NOT EXISTS invite_codes (
-                    code TEXT PRIMARY KEY, 
-                    is_used INTEGER
-                )''')
+                    code TEXT PRIMARY KEY, is_used INTEGER)''')
     conn.commit()
-    
-    # Create default master admin if none exists
     c.execute("SELECT * FROM users WHERE username = 'admin'")
     if not c.fetchone():
         hashed_pw = hashlib.sha256('admin123'.encode()).hexdigest()
@@ -41,110 +32,99 @@ def init_db():
 init_db()
 
 # ==========================================
-# CUSTOM CSS: Modern Techy Glossy & Squared UI
+# CUSTOM CSS: Unique Zones & YouTube Grid
 # ==========================================
 st.markdown("""
 <style>
+/* Base Dark Theme */
 .stApp {
-    background: linear-gradient(135deg, #09071b, #1a163b, #111019);
-    color: #f0f0f5;
+    background: #0a0a0f;
+    color: #e0e0e0;
 }
-.tech-container {
-    background: rgba(25, 22, 48, 0.6);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 75, 75, 0.2);
-    border-radius: 14px;
-    padding: 24px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    margin-bottom: 25px;
+
+/* 1. Admin Zone (Warning/Amber Theme) */
+.admin-zone {
+    background: linear-gradient(90deg, rgba(30,20,0,0.8), rgba(60,35,0,0.8));
+    border-left: 6px solid #ffaa00;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(255, 170, 0, 0.15);
 }
-.glossy-card {
-    background: rgba(20, 18, 38, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 22px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+
+/* 2. Upload Zone (Cyan/Tech Theme) */
+.upload-zone {
+    background: linear-gradient(90deg, rgba(0,25,35,0.8), rgba(0,45,60,0.8));
+    border-left: 6px solid #00eeff;
+    border-radius: 8px;
+    padding: 20px;
     margin-bottom: 30px;
-    transition: transform 0.3s ease, border-color 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 238, 255, 0.15);
 }
-.glossy-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(255, 75, 75, 0.4);
-    box-shadow: 0 12px 40px rgba(255, 75, 75, 0.15);
+
+/* 3. Feed/Player Zone (Purple/Cinematic Theme) */
+.feed-header {
+    background: rgba(20, 10, 40, 0.9);
+    border: 1px solid rgba(150, 50, 255, 0.3);
+    border-radius: 8px;
+    padding: 15px 25px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(150, 50, 255, 0.2);
+}
+
+/* Video Thumbnail Cards (YouTube Style) */
+.video-card {
+    background: #12121a;
+    border: 1px solid #2a2a35;
+    border-radius: 12px;
+    padding: 12px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+}
+.video-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    border-color: #9632ff;
 }
 .card-title {
-    font-size: 1.3rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: bold;
     color: #ffffff;
-    margin-bottom: 15px;
-    border-left: 5px solid #ff4b4b;
-    padding-left: 12px;
-    letter-spacing: 0.5px;
+    margin: 10px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-[data-baseweb="tab-list"] {
-    gap: 15px;
-    background-color: transparent;
-    padding-bottom: 10px;
-}
-[data-baseweb="tab"] {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px !important;
-    padding: 14px 28px !important;
-    color: #a0a0b0 !important;
-    font-weight: 700;
-    font-size: 1.05rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-[data-baseweb="tab"]:hover {
-    background: rgba(255, 75, 75, 0.1);
-    border-color: rgba(255, 75, 75, 0.4);
-    color: #ffffff !important;
-    box-shadow: 0 0 20px rgba(255, 75, 75, 0.2);
-}
-[aria-selected="true"] {
-    background: linear-gradient(135deg, #ff4b4b, #cc2e2e) !important;
-    border-color: #ff4b4b !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 25px rgba(255, 75, 75, 0.5) !important;
+
+/* Button Reskins */
+div.stButton > button {
+    border-radius: 6px;
+    font-weight: bold;
+    width: 100%;
 }
 div.stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #ff4b4b, #d92626);
+    background: #9632ff;
     color: white;
-    font-weight: 700;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.25s ease-in-out;
-    box-shadow: 0 4px 15px rgba(255, 75, 75, 0.4);
+    border: none;
 }
 div.stButton > button[kind="primary"]:hover {
-    transform: scale(1.03);
-    box-shadow: 0 6px 25px rgba(255, 75, 75, 0.7);
-    border-color: #ffffff;
-}
-.stTextInput > div > div > input, .stFileUploader {
-    background-color: rgba(15, 13, 30, 0.8) !important;
-    border-radius: 10px !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #ffffff !important;
+    background: #b05aff;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# GOOGLE DRIVE OAUTH SETUP (Cloud-Compatible)
+# GOOGLE DRIVE OAUTH SETUP
 # ==========================================
 SCOPES = ['https://www.googleapis.com/auth/drive']
 creds = None
 
-# 1. Check if running on Streamlit Cloud using st.secrets
 if "google_token" in st.secrets:
     creds_info = dict(st.secrets["google_token"])
     creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
-# 2. Fallback for local testing
 elif os.path.exists('token.json'):
     creds = Credentials.from_authorized_user_file('token.json', SCOPES)
 
@@ -155,260 +135,273 @@ drive_service = build('drive', 'v3', credentials=creds)
 MASTER_FOLDER_ID = '1UwuA56of_7fc4WkpuUqqSZSAKsgHqEoE'
 
 # ==========================================
-# SESSION STATE MANAGEMENT FOR AUTH
+# SESSION STATE
 # ==========================================
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['username'] = ''
     st.session_state['folder_id'] = ''
     st.session_state['is_admin'] = 0
+    st.session_state['active_video_id'] = None
+    st.session_state['active_video_name'] = ""
 
 # ==========================================
-# AUTHENTICATION SCREEN (Login / Register)
+# AUTHENTICATION SCREEN
 # ==========================================
 if not st.session_state['logged_in']:
-    st.markdown('<div class="tech-container">', unsafe_allow_html=True)
-    st.title("🔐 The Triad Vault Access")
-    st.markdown("##### *Secure Quantum-Encrypted Multi-Tenant Storage Node*")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="feed-header"><h2>🔐 TRIAD VAULT ACCESS</h2></div>', unsafe_allow_html=True)
     
-    tab1, tab2 = st.tabs(["🔑 IDENTIFY & LOGIN", "📝 PROVISION NEW VAULT"])
-    
-    with tab1:
-        st.markdown('<div class="tech-container">', unsafe_allow_html=True)
-        st.subheader("Sign In to Your Node")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
+        st.subheader("Login Node")
         with st.form("login_form"):
             login_user = st.text_input("Username")
             login_pass = st.text_input("Password", type="password")
-            login_submit = st.form_submit_button("Authenticate Access")
-            
-            if login_submit:
+            if st.form_submit_button("Authenticate", type="primary"):
                 conn = sqlite3.connect('vault_users.db')
                 c = conn.cursor()
                 hashed_pw = hashlib.sha256(login_pass.encode()).hexdigest()
                 c.execute("SELECT folder_id, is_admin FROM users WHERE username = ? AND password = ?", (login_user, hashed_pw))
                 result = c.fetchone()
                 conn.close()
-                
                 if result:
                     st.session_state['logged_in'] = True
                     st.session_state['username'] = login_user
                     st.session_state['folder_id'] = result[0]
                     st.session_state['is_admin'] = result[1]
-                    st.success("Access Granted! Synchronizing node...")
                     st.rerun()
                 else:
-                    st.error("Invalid credentials or node mismatch.")
+                    st.error("Invalid credentials.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab2:
-        st.markdown('<div class="tech-container">', unsafe_allow_html=True)
-        st.subheader("Initialize a Sub-Vault Node")
-        st.markdown("*(Requires a master-generated clearance invite code)*")
-            
+    with col2:
+        st.markdown('<div class="admin-zone">', unsafe_allow_html=True)
+        st.subheader("Provision Node")
         with st.form("register_form"):
             reg_user = st.text_input("Choose Username")
             reg_pass = st.text_input("Choose Password", type="password")
-            reg_code = st.text_input("Master Invite Clearance Code")
-            reg_submit = st.form_submit_button("Initialize Node")
-            
-            if reg_submit:
-                if not reg_user or not reg_pass or not reg_code:
-                    st.warning("Please complete all parameter fields.")
+            reg_code = st.text_input("Invite Code")
+            if st.form_submit_button("Initialize Vault"):
+                conn = sqlite3.connect('vault_users.db')
+                c = conn.cursor()
+                c.execute("SELECT is_used FROM invite_codes WHERE code = ?", (reg_code,))
+                code_res = c.fetchone()
+                if not code_res or code_res[0] == 1:
+                    st.error("Invalid or used code.")
                 else:
-                    conn = sqlite3.connect('vault_users.db')
-                    c = conn.cursor()
-                    
-                    c.execute("SELECT is_used FROM invite_codes WHERE code = ?", (reg_code,))
-                    code_res = c.fetchone()
-                    
-                    if not code_res:
-                        st.error("Invalid clearance code.")
-                    elif code_res[0] == 1:
-                        st.error("This clearance code has already been burned.")
+                    c.execute("SELECT * FROM users WHERE username = ?", (reg_user,))
+                    if c.fetchone():
+                        st.error("Username taken.")
                     else:
-                        c.execute("SELECT * FROM users WHERE username = ?", (reg_user,))
-                        if c.fetchone():
-                            st.error("Username vector already occupied.")
-                        else:
-                            with st.spinner("Carving out private sub-vault partition on Drive..."):
-                                folder_metadata = {
-                                    'name': f"{reg_user}_Vault",
-                                    'mimeType': 'application/vnd.google-apps.folder',
-                                    'parents': [MASTER_FOLDER_ID]
-                                }
-                                subfolder = drive_service.files().create(body=folder_metadata, fields='id').execute()
-                                user_folder_id = subfolder.get('id')
-                                
-                                hashed_pw = hashlib.sha256(reg_pass.encode()).hexdigest()
-                                c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", (reg_user, hashed_pw, user_folder_id, 0))
-                                c.execute("UPDATE invite_codes SET is_used = 1 WHERE code = ?", (reg_code,))
-                                conn.commit()
-                                st.success("Vault successfully provisioned! Switch to the Login tab to enter.")
-                    conn.close()
+                        with st.spinner("Carving sub-vault..."):
+                            folder_metadata = {'name': f"{reg_user}_Vault", 'mimeType': 'application/vnd.google-apps.folder', 'parents': [MASTER_FOLDER_ID]}
+                            subfolder = drive_service.files().create(body=folder_metadata, fields='id').execute()
+                            
+                            hashed_pw = hashlib.sha256(reg_pass.encode()).hexdigest()
+                            c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", (reg_user, hashed_pw, subfolder.get('id'), 0))
+                            c.execute("UPDATE invite_codes SET is_used = 1 WHERE code = ?", (reg_code,))
+                            conn.commit()
+                            st.success("Vault provisioned! You may now login.")
+                conn.close()
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MAIN APP INTERFACE (Unlocked post-login)
+# MAIN APP INTERFACE
 # ==========================================
 else:
-    col_top1, col_top2 = st.columns([3, 1])
-    with col_top1:
-        st.markdown(f'<div class="tech-container" style="padding: 15px 20px; margin-bottom: 15px;">', unsafe_allow_html=True)
-        st.title(f"📹 {st.session_state['username'].capitalize()}'s Vault Node")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col_top2:
-        st.write("")
-        if st.button("🚪 Terminate Session", use_container_width=True):
-            st.session_state['logged_in'] = False
-            st.session_state['username'] = ''
-            st.session_state['folder_id'] = ''
-            st.session_state['is_admin'] = 0
+    # Header & Logout
+    col_t1, col_t2 = st.columns([5, 1])
+    with col_t1:
+        st.markdown(f'<div class="feed-header"><h2>📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
+    with col_t2:
+        if st.button("🚪 Logout"):
+            st.session_state.clear()
             st.rerun()
 
     target_folder_id = st.session_state['folder_id']
 
+    # ==========================================
+    # ADMIN ZONE (Distinct Amber)
+    # ==========================================
     if st.session_state['is_admin'] == 1:
-        with st.expander("🛠️ MASTER COMMAND MATRIX & VAULT INSPECTOR", expanded=False):
-            st.markdown('<div class="tech-container">', unsafe_allow_html=True)
-            st.write("### 🔑 Clearance Key Synthesizer")
+        st.markdown('<div class="admin-zone">', unsafe_allow_html=True)
+        st.write("### 🛠️ MASTER COMMAND MATRIX")
+        col_a1, col_a2 = st.columns(2)
+        
+        with col_a1:
             if st.button("Generate New Invite Token"):
                 import uuid
                 new_code = f"TRIAD-{str(uuid.uuid4()).upper()[:8]}"
-                
                 conn = sqlite3.connect('vault_users.db')
                 c = conn.cursor()
                 c.execute("INSERT INTO invite_codes VALUES (?, ?)", (new_code, 0))
                 conn.commit()
                 conn.close()
-                
-                st.success(f"Generated Clearance Code: **`{new_code}`**")
-            
+                st.success(f"**`{new_code}`**")
+        
+        with col_a2:
             conn = sqlite3.connect('vault_users.db')
             c = conn.cursor()
-            c.execute("SELECT code FROM invite_codes WHERE is_used = 0")
-            unused_codes = c.fetchall()
-            
-            if unused_codes:
-                st.write("**Active Unused Clearance Tokens:**")
-                for uc in unused_codes:
-                    st.code(uc[0])
-            else:
-                st.info("No active unused clearance tokens.")
-
-            st.markdown("---")
-            st.write("### 🌐 Node Sub-Vault Inspector")
-            
             c.execute("SELECT username, folder_id FROM users")
-            all_users = c.fetchall()
+            all_users = {u[0]: u[1] for u in c.fetchall()}
             conn.close()
-            
-            user_dict = {u[0]: u[1] for u in all_users}
-            selected_user_to_view = st.selectbox("Select Target Member Vault", list(user_dict.keys()))
-            
-            if selected_user_to_view:
-                target_folder_id = user_dict[selected_user_to_view]
-                if selected_user_to_view != st.session_state['username']:
-                    st.info(f"🔍 Inspector active on node partition: **{selected_user_to_view}**")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    if target_folder_id == st.session_state['folder_id']:
-        st.markdown('<div class="tech-container">', unsafe_allow_html=True)
-        st.subheader("📤 Data Stream Ingestion")
-
-        with st.form("upload_form", clear_on_submit=True):
-            custom_title = st.text_input("Give your thought a Designated Tag Name")
-            uploaded_file = st.file_uploader("Select Media Stream Package (<100MB)", type=["mp4", "mov"])
-            submit_button = st.form_submit_button("Initiate Secure Upload", type="primary")
-
-        if submit_button:
-            if not uploaded_file or not custom_title:
-                st.warning("Please supply both a designated tag name and a media file!")
-            else:
-                file_extension = os.path.splitext(uploaded_file.name)[1]
-                final_name = custom_title + file_extension
-                
-                file_metadata = {'name': final_name, 'parents': [target_folder_id]}
-                media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=1024*1024, resumable=True)
-                request = drive_service.files().create(body=file_metadata, media_body=media, fields='id')
-                
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                response = None
-                start_time = time.time()
-                file_size = uploaded_file.size
-                
-                try:
-                    while response is None:
-                        status, response = request.next_chunk()
-                        if status:
-                            current_time = time.time()
-                            current_bytes = status.resumable_progress
-                            total_size = status.total_size if status.total_size else file_size
-                            pct = int(current_bytes / total_size * 100) if total_size > 0 else 0
-                            progress_bar.progress(min(pct, 100))
-                            
-                            elapsed = current_time - start_time
-                            if elapsed > 0:
-                                speed_mbps = (current_bytes / elapsed) / (1024 * 1024)
-                                status_text.markdown(f"🚀 **Streaming...** `{pct}%` uploaded | Real-Time Velocity: `⚡ {speed_mbps:.2f} MB/s`")
-                    
-                    file_id = response.get('id')
-                    drive_service.permissions().create(fileId=file_id, body={'type': 'anyone', 'role': 'reader'}).execute()
-                    
-                    status_text.empty()
-                    progress_bar.empty()
-                    st.success(f"Transmission Complete: '{final_name}' successfully locked into vault.")
-                    time.sleep(1)
-                    st.rerun()
-                    
-                except Exception as e:
-                    st.error(f"Transmission stream interrupted: {e}")
+            selected_user = st.selectbox("Inspect Node:", list(all_users.keys()))
+            if selected_user:
+                target_folder_id = all_users[selected_user]
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="tech-container">', unsafe_allow_html=True)
-    st.subheader("📺 Active Vault Feed Partition")
-    st.markdown('</div>', unsafe_allow_html=True)
+    # ==========================================
+    # UPLOAD ZONE (Distinct Cyan)
+    # ==========================================
+    if target_folder_id == st.session_state['folder_id']:
+        st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
+        st.write("### 📤 INGESTION STREAM")
 
-    # UPDATED QUERY: Filters specifically for video files to prevent the 403 decoder error
-    results = drive_service.files().list(
-        q=f"'{target_folder_id}' in parents and trashed=false and mimeType contains 'video/'",
-        fields="files(id, name)"
-    ).execute()
+        with st.form("upload_form", clear_on_submit=True):
+            col_u1, col_u2 = st.columns([2, 1])
+            with col_u1:
+                custom_title = st.text_input("Designated Tag Name")
+                uploaded_file = st.file_uploader("Video Stream (<100MB)", type=["mp4", "mov"])
+            with col_u2:
+                st.write("") 
+                st.write("") 
+                thumb_file = st.file_uploader("Thumbnail (Optional)", type=["jpg", "png", "jpeg"])
+            
+            submit_button = st.form_submit_button("Initiate Upload", type="primary")
 
-    items = results.get('files', [])
+        if submit_button and uploaded_file and custom_title:
+            # 1. Upload Video
+            file_extension = os.path.splitext(uploaded_file.name)[1]
+            final_name = custom_title + file_extension
+            media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=1024*1024, resumable=True)
+            request = drive_service.files().create(body={'name': final_name, 'parents': [target_folder_id]}, media_body=media, fields='id')
+            
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            response, start_time = None, time.time()
+            
+            while response is None:
+                status, response = request.next_chunk()
+                if status:
+                    pct = int(status.resumable_progress / uploaded_file.size * 100)
+                    progress_bar.progress(min(pct, 100))
+                    speed = (status.resumable_progress / (time.time() - start_time)) / (1024 * 1024)
+                    status_text.markdown(f"🚀 `{pct}%` | `⚡ {speed:.2f} MB/s`")
+            
+            video_id = response.get('id')
+            drive_service.permissions().create(fileId=video_id, body={'type': 'anyone', 'role': 'reader'}).execute()
+            
+            # 2. Upload Thumbnail if provided (named "thumb_{video_id}.ext")
+            if thumb_file:
+                status_text.markdown("📸 Processing custom thumbnail...")
+                thumb_ext = os.path.splitext(thumb_file.name)[1]
+                thumb_metadata = {'name': f"thumb_{video_id}{thumb_ext}", 'parents': [target_folder_id]}
+                thumb_media = MediaIoBaseUpload(thumb_file, mimetype=thumb_file.type, resumable=True)
+                thumb_resp = drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
+                drive_service.permissions().create(fileId=thumb_resp.get('id'), body={'type': 'anyone', 'role': 'reader'}).execute()
 
-    if not items:
-        st.info("Target vault partition is currently empty.")
-    else:
-        for item in items:
-            file_id = item['id']
-            file_name = item['name']
-            
-            display_name = os.path.splitext(file_name)[0]
-            
-            st.markdown('<div class="glossy-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="card-title">🎬 {display_name}</div>', unsafe_allow_html=True)
-            
-            try:
-                request = drive_service.files().get_media(fileId=file_id)
+            status_text.empty()
+            progress_bar.empty()
+            st.success(f"'{final_name}' locked into vault.")
+            time.sleep(1)
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # ==========================================
+    # VIDEO GRID & LAZY PLAYER (YouTube Style)
+    # ==========================================
+    st.markdown('<div class="feed-header"><h3>📺 VAULT GRID</h3></div>', unsafe_allow_html=True)
+
+    # Cinematic Player Engine (Only loads if a video is clicked)
+    if st.session_state['active_video_id']:
+        st.markdown(f"#### 🎬 Now Playing: {st.session_state['active_video_name']}")
+        try:
+            with st.spinner("Buffering secure stream..."):
+                request = drive_service.files().get_media(fileId=st.session_state['active_video_id'])
                 fh = io.BytesIO()
                 downloader = MediaIoBaseDownload(fh, request)
                 done = False
                 while not done:
                     _, done = downloader.next_chunk()
                 fh.seek(0)
-                
                 st.video(fh)
-            except Exception as e:
-                st.error(f"Stream decoder error: {e}")
+        except Exception as e:
+            st.error(f"Stream decoder error: {e}")
+        
+        if st.button("❌ Close Player"):
+            st.session_state['active_video_id'] = None
+            st.rerun()
+        st.markdown("---")
+
+    # Fetch ALL files (videos + custom thumbnails) and include thumbnailLink
+    results = drive_service.files().list(
+        q=f"'{target_folder_id}' in parents and trashed=false",
+        fields="files(id, name, mimeType, thumbnailLink)"
+    ).execute()
+    items = results.get('files', [])
+
+    # Separate videos and custom thumbnails mapping
+    videos = [i for i in items if 'video/' in i.get('mimeType', '')]
+    
+    # Map video_id to its custom thumbnail file dictionary
+    custom_thumbs = {}
+    for i in items:
+        if i['name'].startswith('thumb_'):
+            try:
+                vid_id = i['name'].split('_')[1].split('.')[0]
+                custom_thumbs[vid_id] = i
+            except:
+                pass
+
+    if not videos:
+        st.info("Grid is currently empty.")
+    else:
+        # Create a 3-column grid
+        cols = st.columns(3)
+        
+        for idx, video in enumerate(videos):
+            col = cols[idx % 3] # Distribute evenly across 3 columns
             
-            st.write("") 
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("🚨 Purge from the Triad", key=f"delete_{file_id}", type="primary", use_container_width=True):
-                    drive_service.files().delete(fileId=file_id).execute()
-                    st.rerun()
-                    
-            st.markdown('</div>', unsafe_allow_html=True)
+            with col:
+                st.markdown('<div class="video-card">', unsafe_allow_html=True)
+                
+                # 1. Render Thumbnail
+                vid_id = video['id']
+                if vid_id in custom_thumbs:
+                    # Download custom thumbnail directly into memory to display securely
+                    thumb_request = drive_service.files().get_media(fileId=custom_thumbs[vid_id]['id'])
+                    thumb_fh = io.BytesIO()
+                    thumb_downloader = MediaIoBaseDownload(thumb_fh, thumb_request)
+                    done = False
+                    while not done: _, done = thumb_downloader.next_chunk()
+                    thumb_fh.seek(0)
+                    st.image(thumb_fh, use_container_width=True)
+                elif video.get('thumbnailLink'):
+                    # Use Google's auto-generated thumbnail URL if no custom one exists
+                    st.image(video.get('thumbnailLink'), use_container_width=True)
+                else:
+                    # Fallback if Google hasn't processed the thumbnail yet
+                    st.info("🎥 Processing Thumbnail...")
+
+                # 2. Render Title & Buttons
+                display_name = os.path.splitext(video['name'])[0]
+                st.markdown(f'<div class="card-title">{display_name}</div>', unsafe_allow_html=True)
+                
+                button_col1, button_col2 = st.columns([2, 1])
+                with button_col1:
+                    if st.button("▶️ Watch", key=f"play_{vid_id}", type="primary"):
+                        st.session_state['active_video_id'] = vid_id
+                        st.session_state['active_video_name'] = display_name
+                        st.rerun()
+                with button_col2:
+                    if st.button("🗑️", key=f"del_{vid_id}"):
+                        drive_service.files().delete(fileId=vid_id).execute()
+                        # Also delete custom thumbnail if it exists to save space
+                        if vid_id in custom_thumbs:
+                            drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
+                        if st.session_state['active_video_id'] == vid_id:
+                            st.session_state['active_video_id'] = None
+                        st.rerun()
+                
+                st.markdown('</div>', unsafe_allow_html=True)
