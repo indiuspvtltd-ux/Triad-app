@@ -101,23 +101,6 @@ def init_db():
 init_db()
 
 # ==========================================
-# TEMPORARY EMERGENCY PASSWORD RESET
-# (Delete this block after you log in successfully)
-# ==========================================
-def force_reset_password():
-    conn = sqlite3.connect('vault_users_v2.db')
-    c = conn.cursor()
-    salt = bcrypt.gensalt()
-    # Change 'admin123' to whatever temporary password you want
-    new_hash = bcrypt.hashpw('admin123'.encode('utf-8'), salt).decode('utf-8')
-    c.execute("UPDATE users SET password = ?, failed_attempts = 0, locked_until = 0 WHERE username = 'admin'", (new_hash,))
-    conn.commit()
-    conn.close()
-
-force_reset_password()
-# ==========================================
-
-# ==========================================
 # SIGHTENGINE NSFW SCANNER FUNCTION
 # ==========================================
 def scan_video_content(temp_file_path):
