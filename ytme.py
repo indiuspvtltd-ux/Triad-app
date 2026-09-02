@@ -7,7 +7,7 @@ import bcrypt
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload, MediaIoBaseDownload
 
 st.set_page_config(page_title="The Triad Vault", layout="wide")
 
@@ -101,6 +101,60 @@ def init_db():
 init_db()
 
 # ==========================================
+# SIGHTENGINE NSFW SCANNER FUNCTION
+# ==========================================
+def scan_video_content(temp_file_path):
+    """
+    Extracts a single frame from the video and sends it to Sightengine's 
+    NSFW API to check for explicit content before allowing the upload.
+    """
+    import cv2
+    import requests
+    import os
+    
+    try:
+        # 1. Extract a single frame (30 frames into the video)
+        cap = cv2.VideoCapture(temp_file_path)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 30) 
+        ret, frame = cap.read()
+        cap.release()
+        
+        if not ret:
+            return True # Fallback if extraction fails
+            
+        # 2. Save the frame temporarily
+        frame_path = "temp_scan_frame.jpg"
+        cv2.imwrite(frame_path, frame)
+        
+        # 3. Send the image to Sightengine
+        params = {
+            'models': 'nudity-2.0',
+            'api_user': '885017226',
+            'api_secret': 'bEaHzJzrFb4FMGpRsQpEdySpsg73PhJV'
+        }
+        
+        with open(frame_path, 'rb') as f:
+            files = {'media': f}
+            r = requests.post('https://api.sightengine.com/1.0/check.json', files=files, data=params, timeout=10)
+        
+        # 4. Clean up the temporary image
+        os.remove(frame_path)
+        
+        response = r.json()
+        
+        # 5. Check the NSFW score
+        if 'nudity' in response:
+            # If the 'safe' confidence score drops below 50%, block it
+            if response['nudity']['safe'] < 0.50: 
+                return False 
+                
+        return True
+        
+    except Exception as e:
+        print(f"Scanner Exception: {e}")
+        return True # Default to safe if the API network fails
+
+# ==========================================
 # CUSTOM CSS: Hyper-Modern Animated Glass UI
 # ==========================================
 st.markdown("""
@@ -111,6 +165,29 @@ st.markdown("""
     font-family: 'Outfit', sans-serif !important;
     background: radial-gradient(circle at top left, #120a21, #050508 70%);
     color: #e0e0e0;
+}
+
+/* 📱 AUTO-RESPONSIVE MOBILE STACKING */
+@media (max-width: 900px) {
+    div[data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 25px;
+    }
+    .main-banner h2 {
+        font-size: 2rem !important;
+    }
+    .auth-header {
+        font-size: 1.3rem !important;
+        margin-bottom: 15px !important;
+    }
+    .brand-text {
+        font-size: 3rem !important;
+    }
+    .play-icon {
+        font-size: 4rem !important;
+    }
 }
 
 /* 🌟 Animated Main Banner */
@@ -387,10 +464,10 @@ else:
                 target_folder_id = all_users[selected_user]
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # File Upload Module (Optimized for Unlimited File Sizes)
+    # File Upload Module
     if target_folder_id == st.session_state['folder_id']:
         st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
-        st.write("<h3 style='margin-top:0;'>📤 INGESTION STREAM (UNLIMITED)</h3>", unsafe_allow_html=True)
+        st.write("<h3 style='margin-top:0;'>📤 INGESTION STREAM</h3>", unsafe_allow_html=True)
 
         with st.form("upload_form", clear_on_submit=True):
             col_u1, col_u2 = st.columns([2, 1])
@@ -409,59 +486,75 @@ else:
             file_extension = os.path.splitext(uploaded_file.name)[1]
             final_name = custom_title + file_extension
             
-            # MEMORY PROTECTION: Write large file chunks to local disk temp file instead of holding it in RAM
+            status_text = st.empty()
+            progress_bar = st.progress(0)
+            
+            # MEMORY PROTECTION: Write large file chunks to local disk temp file
+            status_text.markdown("⏳ Buffering stream to local vault...")
             temp_file_path = f"temp_{final_name}"
             with open(temp_file_path, "wb") as f:
                 for chunk in iter(lambda: uploaded_file.read(1024*1024), b""):
                     f.write(chunk)
             
-            file_size = os.path.getsize(temp_file_path)
+            # RUN THE FREE SIGHTENGINE SCANNER
+            status_text.markdown("🛡️ **SCANNING:** Checking community guidelines (NSFW Analysis)...")
+            is_safe = scan_video_content(temp_file_path)
             
-            # Use MediaFileUpload to safely stream gigabytes directly from disk
-            media = MediaFileUpload(temp_file_path, mimetype=uploaded_file.type, chunksize=10*1024*1024, resumable=True)
-            request = drive_service.files().create(body={'name': final_name, 'parents': [target_folder_id]}, media_body=media, fields='id')
-            
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            response = None
-            start_time = time.time()
-            last_ui_update = start_time 
-            
-            while response is None:
-                status, response = request.next_chunk()
-                if status:
-                    current_time = time.time()
-                    if current_time - last_ui_update > 0.5:
-                        pct = int(status.resumable_progress / file_size * 100)
-                        progress_bar.progress(min(pct, 100))
-                        
-                        elapsed_time = current_time - start_time
-                        if elapsed_time > 0:
-                            speed = (status.resumable_progress / elapsed_time) / (1024 * 1024)
-                        else:
-                            speed = 0.0
-                            
-                        status_text.markdown(f"🚀 `{pct}%` | `⚡ {speed:.2f} MB/s`")
-                        last_ui_update = current_time
-            
-            # Clean up local disk temp file
-            if os.path.exists(temp_file_path):
+            if not is_safe:
+                # Security Failure: Delete the temp file and block the upload
                 os.remove(temp_file_path)
+                status_text.empty()
+                progress_bar.empty()
+                st.error("🚨 **UPLOAD BLOCKED:** This video violates explicit content guidelines.")
+                
+            else:
+                # Security Passed: Proceed with Google Drive Upload
+                status_text.markdown("✅ **Scan Passed.** Routing to encrypted vault...")
+                
+                file_size = os.path.getsize(temp_file_path)
+                media = MediaFileUpload(temp_file_path, mimetype=uploaded_file.type, chunksize=10*1024*1024, resumable=True)
+                request = drive_service.files().create(body={'name': final_name, 'parents': [target_folder_id]}, media_body=media, fields='id')
+                
+                start_time = time.time()
+                last_ui_update = start_time 
+                response = None
+                
+                while response is None:
+                    status, response = request.next_chunk()
+                    if status:
+                        current_time = time.time()
+                        if current_time - last_ui_update > 0.5:
+                            pct = int(status.resumable_progress / file_size * 100)
+                            progress_bar.progress(min(pct, 100))
+                            
+                            elapsed_time = current_time - start_time
+                            if elapsed_time > 0:
+                                speed = (status.resumable_progress / elapsed_time) / (1024 * 1024)
+                            else:
+                                speed = 0.0
+                                
+                            status_text.markdown(f"🚀 **UPLOADING:** `{pct}%` | `⚡ {speed:.2f} MB/s`")
+                            last_ui_update = current_time
+                
+                # Clean up local disk temp file
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
 
-            video_id = response.get('id')
-            
-            if thumb_file:
-                status_text.markdown("📸 Processing custom thumbnail...")
-                thumb_ext = os.path.splitext(thumb_file.name)[1]
-                thumb_metadata = {'name': f"thumb_{video_id}{thumb_ext}", 'parents': [target_folder_id]}
-                thumb_media = MediaIoBaseUpload(thumb_file, mimetype=thumb_file.type, resumable=False)
-                drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
+                video_id = response.get('id')
+                
+                if thumb_file:
+                    status_text.markdown("📸 Processing custom thumbnail...")
+                    progress_bar.progress(98)
+                    thumb_ext = os.path.splitext(thumb_file.name)[1]
+                    thumb_metadata = {'name': f"thumb_{video_id}{thumb_ext}", 'parents': [target_folder_id]}
+                    thumb_media = MediaIoBaseUpload(thumb_file, mimetype=thumb_file.type, resumable=False)
+                    drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
 
-            status_text.empty()
-            progress_bar.empty()
-            st.success(f"✅ '{final_name}' locked into vault.")
-            time.sleep(1.5)
-            st.rerun()
+                status_text.empty()
+                progress_bar.empty()
+                st.success(f"✅ Vault Security Passed: '{final_name}' is now live.")
+                time.sleep(1.5)
+                st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Video Grid & Player
