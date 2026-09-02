@@ -418,15 +418,18 @@ if not st.session_state['logged_in']:
 # MAIN APP INTERFACE
 # ==========================================
 else:
-    # Top bar with Settings and Logout buttons
-    col_t1, col_t2, col_t3 = st.columns([5, 1, 1])
+    # UPDATED Top bar with proper spacing and full labels
+    col_t1, col_t2, col_t3 = st.columns([5, 1.5, 1.5])
+    
     with col_t1:
         st.markdown(f'<div class="feed-header"><h2 style="margin:0; font-weight:800;">📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
+        
     with col_t2:
-        if st.button("⚙️ Sec", type="secondary"):
+        if st.button("⚙️ Settings", type="secondary"):
             security_settings_modal()
+            
     with col_t3:
-        if st.button("🚪 Out", type="secondary"):
+        if st.button("🚪 Logout", type="secondary"):
             st.session_state.clear()
             st.rerun()
 
