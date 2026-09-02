@@ -7,7 +7,7 @@ import bcrypt
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 st.set_page_config(page_title="The Triad Vault", layout="wide")
 
@@ -111,29 +111,6 @@ st.markdown("""
     font-family: 'Outfit', sans-serif !important;
     background: radial-gradient(circle at top left, #120a21, #050508 70%);
     color: #e0e0e0;
-}
-
-/* 📱 AUTO-RESPONSIVE MOBILE STACKING */
-@media (max-width: 900px) {
-    div[data-testid="column"] {
-        width: 100% !important;
-        flex: 1 1 100% !important;
-        min-width: 100% !important;
-        margin-bottom: 25px;
-    }
-    .main-banner h2 {
-        font-size: 2rem !important;
-    }
-    .auth-header {
-        font-size: 1.3rem !important;
-        margin-bottom: 15px !important;
-    }
-    .brand-text {
-        font-size: 3rem !important;
-    }
-    .play-icon {
-        font-size: 4rem !important;
-    }
 }
 
 /* 🌟 Animated Main Banner */
@@ -410,29 +387,38 @@ else:
                 target_folder_id = all_users[selected_user]
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # File Upload Module
+    # File Upload Module (Optimized for Unlimited File Sizes)
     if target_folder_id == st.session_state['folder_id']:
         st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
-        st.write("<h3 style='margin-top:0;'>📤 INGESTION STREAM</h3>", unsafe_allow_html=True)
+        st.write("<h3 style='margin-top:0;'>📤 INGESTION STREAM (UNLIMITED)</h3>", unsafe_allow_html=True)
 
         with st.form("upload_form", clear_on_submit=True):
             col_u1, col_u2 = st.columns([2, 1])
             with col_u1:
                 custom_title = st.text_input("🏷️ Designated Tag Name")
-                uploaded_file = st.file_uploader("🎞️ Video Stream (<100MB)", type=["mp4", "mov"])
+                uploaded_file = st.file_uploader("🎞️ Video Stream (Gigabyte-Ready)", type=["mp4", "mov", "mkv", "avi"])
             with col_u2:
                 st.write("") 
                 st.write("") 
                 thumb_file = st.file_uploader("🖼️ Thumbnail (Optional)", type=["jpg", "png", "jpeg"])
             
             st.write("")
-            submit_button = st.form_submit_button("⬆️ Initiate Encrypted Upload", type="primary")
+            submit_button = st.form_submit_button("⬆️ Initiate Large-Scale Upload", type="primary")
 
         if submit_button and uploaded_file and custom_title:
             file_extension = os.path.splitext(uploaded_file.name)[1]
             final_name = custom_title + file_extension
             
-            media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type, chunksize=2*1024*1024, resumable=True)
+            # MEMORY PROTECTION: Write large file chunks to local disk temp file instead of holding it in RAM
+            temp_file_path = f"temp_{final_name}"
+            with open(temp_file_path, "wb") as f:
+                for chunk in iter(lambda: uploaded_file.read(1024*1024), b""):
+                    f.write(chunk)
+            
+            file_size = os.path.getsize(temp_file_path)
+            
+            # Use MediaFileUpload to safely stream gigabytes directly from disk
+            media = MediaFileUpload(temp_file_path, mimetype=uploaded_file.type, chunksize=10*1024*1024, resumable=True)
             request = drive_service.files().create(body={'name': final_name, 'parents': [target_folder_id]}, media_body=media, fields='id')
             
             progress_bar = st.progress(0)
@@ -446,7 +432,7 @@ else:
                 if status:
                     current_time = time.time()
                     if current_time - last_ui_update > 0.5:
-                        pct = int(status.resumable_progress / uploaded_file.size * 100)
+                        pct = int(status.resumable_progress / file_size * 100)
                         progress_bar.progress(min(pct, 100))
                         
                         elapsed_time = current_time - start_time
@@ -458,17 +444,18 @@ else:
                         status_text.markdown(f"🚀 `{pct}%` | `⚡ {speed:.2f} MB/s`")
                         last_ui_update = current_time
             
+            # Clean up local disk temp file
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+
             video_id = response.get('id')
             
             if thumb_file:
                 status_text.markdown("📸 Processing custom thumbnail...")
                 thumb_ext = os.path.splitext(thumb_file.name)[1]
                 thumb_metadata = {'name': f"thumb_{video_id}{thumb_ext}", 'parents': [target_folder_id]}
-                
-                # FIX: resumable=False prevents API crashing for small image uploads
                 thumb_media = MediaIoBaseUpload(thumb_file, mimetype=thumb_file.type, resumable=False)
-                
-                thumb_resp = drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
+                drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
 
             status_text.empty()
             progress_bar.empty()
