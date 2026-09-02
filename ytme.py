@@ -101,6 +101,23 @@ def init_db():
 init_db()
 
 # ==========================================
+# TEMPORARY EMERGENCY PASSWORD RESET
+# (Delete this block after you log in successfully)
+# ==========================================
+def force_reset_password():
+    conn = sqlite3.connect('vault_users_v2.db')
+    c = conn.cursor()
+    salt = bcrypt.gensalt()
+    # Change 'admin123' to whatever temporary password you want
+    new_hash = bcrypt.hashpw('admin123'.encode('utf-8'), salt).decode('utf-8')
+    c.execute("UPDATE users SET password = ?, failed_attempts = 0, locked_until = 0 WHERE username = 'admin'", (new_hash,))
+    conn.commit()
+    conn.close()
+
+force_reset_password()
+# ==========================================
+
+# ==========================================
 # SIGHTENGINE NSFW SCANNER FUNCTION
 # ==========================================
 def scan_video_content(temp_file_path):
@@ -111,7 +128,6 @@ def scan_video_content(temp_file_path):
     try:
         cap = cv2.VideoCapture(temp_file_path)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        # Grab frame from the 50% midpoint to bypass intro screens
         target_frame = int(total_frames * 0.5) if total_frames > 0 else 30
         cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame) 
         
@@ -143,7 +159,6 @@ def scan_video_content(temp_file_path):
             return True 
         
         if 'nudity' in response:
-            # Check the "none" (safe) confidence score
             safe_score = response['nudity'].get('none', 1.0)
             if safe_score < 0.60: 
                 return False 
@@ -418,7 +433,6 @@ if not st.session_state['logged_in']:
 # MAIN APP INTERFACE
 # ==========================================
 else:
-    # UPDATED Top bar with proper spacing and full labels
     col_t1, col_t2, col_t3 = st.columns([5, 1.5, 1.5])
     
     with col_t1:
