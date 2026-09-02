@@ -2,7 +2,7 @@ import sqlite3
 import bcrypt
 
 # Set your new admin password here
-new_password = "YOUR_NEW_PASSWORD_HERE"
+new_password = "abhishek"
 
 # Hash the password securely using bcrypt
 salt = bcrypt.gensalt()
