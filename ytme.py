@@ -104,10 +104,6 @@ init_db()
 # SIGHTENGINE NSFW SCANNER FUNCTION
 # ==========================================
 def scan_video_content(temp_file_path):
-    """
-    Extracts a frame from the middle of the video and correctly parses 
-    Sightengine's nudity-2.0 API to block explicit content.
-    """
     import cv2
     import requests
     import os
@@ -115,9 +111,7 @@ def scan_video_content(temp_file_path):
     try:
         cap = cv2.VideoCapture(temp_file_path)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        
-        # 1. Grab a frame from the exact middle of the video (50% mark)
-        # This prevents the scanner from being tricked by black intro screens
+        # Grab frame from the 50% midpoint to bypass intro screens
         target_frame = int(total_frames * 0.5) if total_frames > 0 else 30
         cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame) 
         
@@ -125,13 +119,11 @@ def scan_video_content(temp_file_path):
         cap.release()
         
         if not ret:
-            return True # Fallback if OpenCV fails to read the video
+            return True 
             
-        # 2. Save the frame temporarily
         frame_path = "temp_scan_frame.jpg"
         cv2.imwrite(frame_path, frame)
         
-        # 3. Send the image to Sightengine
         params = {
             'models': 'nudity-2.0',
             'api_user': '885017226',
@@ -142,31 +134,24 @@ def scan_video_content(temp_file_path):
             files = {'media': f}
             r = requests.post('https://api.sightengine.com/1.0/check.json', files=files, data=params, timeout=15)
         
-        # 4. Clean up the temporary image
         if os.path.exists(frame_path):
             os.remove(frame_path)
         
         response = r.json()
         
-        # Catch API credential or credit limit errors
         if response.get("status") == "failure":
-            print(f"Sightengine API Error: {response.get('error', {}).get('message')}")
             return True 
         
-        # 5. Correctly parse the nudity-2.0 JSON response
         if 'nudity' in response:
-            # In nudity-2.0, 'none' represents the confidence that the image is safe/clean
+            # Check the "none" (safe) confidence score
             safe_score = response['nudity'].get('none', 1.0)
-            
-            # If the scanner is less than 60% confident that the video is safe, block it
             if safe_score < 0.60: 
                 return False 
                 
         return True
         
     except Exception as e:
-        print(f"Scanner Exception: {e}")
-        return True # Default to safe if the network fails so your app doesn't break entirely
+        return True 
 
 # ==========================================
 # CUSTOM CSS: Hyper-Modern Animated Glass UI
@@ -187,21 +172,10 @@ st.markdown("""
         width: 100% !important;
         flex: 1 1 100% !important;
         min-width: 100% !important;
-        margin-bottom: 25px;
+        margin-bottom: 10px;
     }
-    .main-banner h2 {
-        font-size: 2rem !important;
-    }
-    .auth-header {
-        font-size: 1.3rem !important;
-        margin-bottom: 15px !important;
-    }
-    .brand-text {
-        font-size: 3rem !important;
-    }
-    .play-icon {
-        font-size: 4rem !important;
-    }
+    .main-banner h2 { font-size: 2rem !important; }
+    .auth-header { font-size: 1.3rem !important; margin-bottom: 15px !important; }
 }
 
 /* 🌟 Animated Main Banner */
@@ -247,10 +221,6 @@ div[data-testid="stForm"] {
     backdrop-filter: blur(12px);
     transition: all 0.3s ease;
 }
-div[data-testid="stForm"]:hover {
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    transform: translateY(-3px);
-}
 
 /* ✨ Inputs & Buttons */
 .stTextInput > div > div > input {
@@ -281,40 +251,17 @@ div.stButton > button[kind="primary"] {
     border: none;
     box-shadow: 0 4px 15px rgba(255, 42, 42, 0.3);
 }
-div.stButton > button[kind="primary"]:hover {
-    transform: scale(1.02);
-    box-shadow: 0 6px 20px rgba(255, 42, 42, 0.5);
-}
 div.stButton > button[kind="secondary"] {
     background: rgba(255,255,255,0.05);
     color: #c0c0c0;
     border: 1px solid rgba(255,255,255,0.1);
 }
-div.stButton > button[kind="secondary"]:hover {
-    background: rgba(255,255,255,0.1);
-    color: white;
-}
-
-/* 📌 Headers for Auth Sections */
-.auth-header {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.login-accent { color: #00e5ff; }
-.create-accent { color: #ffa600; }
 
 /* Vault Grid CSS */
 .admin-zone { background: rgba(255, 170, 0, 0.05); border-left: 4px solid #ffaa00; border-radius: 12px; padding: 20px; margin-bottom: 20px; backdrop-filter: blur(10px); }
 .upload-zone { background: rgba(0, 238, 255, 0.05); border-left: 4px solid #00eeff; border-radius: 12px; padding: 20px; margin-bottom: 30px; backdrop-filter: blur(10px); }
 .feed-header { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 15px 25px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; text-align: center; backdrop-filter: blur(10px); }
 .video-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px; transition: all 0.3s; height: 100%; backdrop-filter: blur(5px); display: flex; flex-direction: column; justify-content: space-between; }
-.video-card:hover { transform: translateY(-5px); border-color: rgba(178, 92, 255, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 .card-title { font-size: 1.1rem; font-weight: 600; color: #ffffff; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 """, unsafe_allow_html=True)
@@ -347,6 +294,38 @@ if 'logged_in' not in st.session_state:
     st.session_state['is_admin'] = 0
     st.session_state['active_video_id'] = None
     st.session_state['active_video_name'] = ""
+
+# ==========================================
+# DIRECT PASSWORD RESET DIALOG UI
+# ==========================================
+@st.dialog("🔒 Vault Security Settings")
+def security_settings_modal():
+    st.markdown("### Update Vault Password")
+    st.write("Since you are already authenticated, you can change your password directly below.")
+    
+    new_pass = st.text_input("New Password", type="password")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("✅ Update Password", type="primary"):
+            if len(new_pass) >= 6:
+                conn = sqlite3.connect('vault_users_v2.db')
+                c = conn.cursor()
+                salt = bcrypt.gensalt()
+                hashed_pw = bcrypt.hashpw(new_pass.encode('utf-8'), salt).decode('utf-8')
+                
+                c.execute("UPDATE users SET password = ?, failed_attempts = 0, locked_until = 0 WHERE username = ?", (hashed_pw, st.session_state['username']))
+                conn.commit()
+                conn.close()
+                
+                st.success("🎉 Password updated successfully!")
+                time.sleep(1.5)
+                st.rerun()
+            else:
+                st.error("Password must be at least 6 characters.")
+    with c2:
+        if st.button("Cancel", type="secondary"):
+            st.rerun()
 
 # ==========================================
 # AUTHENTICATION SCREEN
@@ -439,11 +418,15 @@ if not st.session_state['logged_in']:
 # MAIN APP INTERFACE
 # ==========================================
 else:
-    col_t1, col_t2 = st.columns([6, 1])
+    # Top bar with Settings and Logout buttons
+    col_t1, col_t2, col_t3 = st.columns([5, 1, 1])
     with col_t1:
         st.markdown(f'<div class="feed-header"><h2 style="margin:0; font-weight:800;">📹 {st.session_state["username"].upper()}\'S VAULT</h2></div>', unsafe_allow_html=True)
     with col_t2:
-        if st.button("🚪 Logout", type="secondary"):
+        if st.button("⚙️ Sec", type="secondary"):
+            security_settings_modal()
+    with col_t3:
+        if st.button("🚪 Out", type="secondary"):
             st.session_state.clear()
             st.rerun()
 
@@ -503,19 +486,16 @@ else:
             status_text = st.empty()
             progress_bar = st.progress(0)
             
-            # MEMORY PROTECTION: Write large file chunks to local disk temp file
             status_text.markdown("⏳ Buffering stream to local vault...")
             temp_file_path = f"temp_{final_name}"
             with open(temp_file_path, "wb") as f:
                 for chunk in iter(lambda: uploaded_file.read(1024*1024), b""):
                     f.write(chunk)
             
-            # RUN THE FIXED SIGHTENGINE SCANNER
             status_text.markdown("🛡️ **SCANNING:** Checking community guidelines (NSFW Analysis)...")
             is_safe = scan_video_content(temp_file_path)
             
             if not is_safe:
-                # Security Failure: Delete the temp file and block the upload
                 if os.path.exists(temp_file_path):
                     os.remove(temp_file_path)
                 status_text.empty()
@@ -523,7 +503,6 @@ else:
                 st.error("🚨 **UPLOAD BLOCKED:** This video violates explicit content guidelines.")
                 
             else:
-                # Security Passed: Proceed with Google Drive Upload
                 status_text.markdown("✅ **Scan Passed.** Routing to encrypted vault...")
                 
                 file_size = os.path.getsize(temp_file_path)
@@ -551,7 +530,6 @@ else:
                             status_text.markdown(f"🚀 **UPLOADING:** `{pct}%` | `⚡ {speed:.2f} MB/s`")
                             last_ui_update = current_time
                 
-                # Clean up local disk temp file
                 if os.path.exists(temp_file_path):
                     os.remove(temp_file_path)
 
