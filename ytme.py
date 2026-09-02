@@ -105,22 +105,27 @@ init_db()
 # ==========================================
 def scan_video_content(temp_file_path):
     """
-    Extracts a single frame from the video and sends it to Sightengine's 
-    NSFW API to check for explicit content before allowing the upload.
+    Extracts a frame from the middle of the video and correctly parses 
+    Sightengine's nudity-2.0 API to block explicit content.
     """
     import cv2
     import requests
     import os
     
     try:
-        # 1. Extract a single frame (30 frames into the video)
         cap = cv2.VideoCapture(temp_file_path)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, 30) 
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        # 1. Grab a frame from the exact middle of the video (50% mark)
+        # This prevents the scanner from being tricked by black intro screens
+        target_frame = int(total_frames * 0.5) if total_frames > 0 else 30
+        cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame) 
+        
         ret, frame = cap.read()
         cap.release()
         
         if not ret:
-            return True # Fallback if extraction fails
+            return True # Fallback if OpenCV fails to read the video
             
         # 2. Save the frame temporarily
         frame_path = "temp_scan_frame.jpg"
@@ -135,24 +140,33 @@ def scan_video_content(temp_file_path):
         
         with open(frame_path, 'rb') as f:
             files = {'media': f}
-            r = requests.post('https://api.sightengine.com/1.0/check.json', files=files, data=params, timeout=10)
+            r = requests.post('https://api.sightengine.com/1.0/check.json', files=files, data=params, timeout=15)
         
         # 4. Clean up the temporary image
-        os.remove(frame_path)
+        if os.path.exists(frame_path):
+            os.remove(frame_path)
         
         response = r.json()
         
-        # 5. Check the NSFW score
+        # Catch API credential or credit limit errors
+        if response.get("status") == "failure":
+            print(f"Sightengine API Error: {response.get('error', {}).get('message')}")
+            return True 
+        
+        # 5. Correctly parse the nudity-2.0 JSON response
         if 'nudity' in response:
-            # If the 'safe' confidence score drops below 50%, block it
-            if response['nudity']['safe'] < 0.50: 
+            # In nudity-2.0, 'none' represents the confidence that the image is safe/clean
+            safe_score = response['nudity'].get('none', 1.0)
+            
+            # If the scanner is less than 60% confident that the video is safe, block it
+            if safe_score < 0.60: 
                 return False 
                 
         return True
         
     except Exception as e:
         print(f"Scanner Exception: {e}")
-        return True # Default to safe if the API network fails
+        return True # Default to safe if the network fails so your app doesn't break entirely
 
 # ==========================================
 # CUSTOM CSS: Hyper-Modern Animated Glass UI
@@ -496,13 +510,14 @@ else:
                 for chunk in iter(lambda: uploaded_file.read(1024*1024), b""):
                     f.write(chunk)
             
-            # RUN THE FREE SIGHTENGINE SCANNER
+            # RUN THE FIXED SIGHTENGINE SCANNER
             status_text.markdown("🛡️ **SCANNING:** Checking community guidelines (NSFW Analysis)...")
             is_safe = scan_video_content(temp_file_path)
             
             if not is_safe:
                 # Security Failure: Delete the temp file and block the upload
-                os.remove(temp_file_path)
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
                 status_text.empty()
                 progress_bar.empty()
                 st.error("🚨 **UPLOAD BLOCKED:** This video violates explicit content guidelines.")
