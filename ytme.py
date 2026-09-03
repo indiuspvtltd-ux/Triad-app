@@ -293,6 +293,9 @@ if 'logged_in' not in st.session_state:
     st.session_state['active_video_id'] = None
     st.session_state['active_video_name'] = ""
 
+if 'editing_thumb_id' not in st.session_state:
+    st.session_state['editing_thumb_id'] = None
+
 # ==========================================
 # DIRECT PASSWORD RESET DIALOG UI
 # ==========================================
@@ -617,19 +620,50 @@ else:
                 display_name = os.path.splitext(video['name'])[0]
                 st.markdown(f'<div class="card-title">{display_name}</div>', unsafe_allow_html=True)
                 
-                button_col1, button_col2 = st.columns([2, 1])
+                # Action Buttons Row
+                button_col1, button_col2, button_col3 = st.columns(3)
                 with button_col1:
                     if st.button("▶️ Watch", key=f"play_{vid_id}", type="primary"):
                         st.session_state['active_video_id'] = vid_id
                         st.session_state['active_video_name'] = display_name
                         st.rerun()
                 with button_col2:
+                    if st.button("🖼️ Edit", key=f"edit_thumb_btn_{vid_id}", type="secondary"):
+                        st.session_state['editing_thumb_id'] = vid_id if st.session_state['editing_thumb_id'] != vid_id else None
+                        st.rerun()
+                with button_col3:
                     if st.button("🗑️", key=f"del_{vid_id}", type="secondary"):
                         drive_service.files().delete(fileId=vid_id).execute()
                         if vid_id in custom_thumbs:
                             drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
                         if st.session_state['active_video_id'] == vid_id:
                             st.session_state['active_video_id'] = None
+                        if st.session_state['editing_thumb_id'] == vid_id:
+                            st.session_state['editing_thumb_id'] = None
                         st.rerun()
+
+                # Thumbnail Edit Expand Section
+                if st.session_state['editing_thumb_id'] == vid_id:
+                    st.markdown("---")
+                    st.write(f"**Upload new thumbnail for:** `{display_name}`")
+                    new_thumb_file = st.file_uploader("Select Image", type=["jpg", "png", "jpeg"], key=f"uploader_{vid_id}")
+                    
+                    if new_thumb_file:
+                        if st.button("💾 Save Thumbnail", key=f"save_thumb_{vid_id}", type="primary"):
+                            with st.spinner("Updating thumbnail..."):
+                                # Delete old custom thumbnail if it exists
+                                if vid_id in custom_thumbs:
+                                    drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
+                                
+                                # Upload new thumbnail
+                                thumb_ext = os.path.splitext(new_thumb_file.name)[1]
+                                thumb_metadata = {'name': f"thumb_{vid_id}{thumb_ext}", 'parents': [target_folder_id]}
+                                thumb_media = MediaIoBaseUpload(new_thumb_file, mimetype=new_thumb_file.type, resumable=False)
+                                drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
+                                
+                                st.session_state['editing_thumb_id'] = None
+                                st.success("✅ Thumbnail updated!")
+                                time.sleep(1)
+                                st.rerun()
                 
                 st.markdown('</div>', unsafe_allow_html=True)
