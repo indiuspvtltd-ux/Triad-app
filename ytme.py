@@ -265,25 +265,7 @@ div.stButton > button[kind="secondary"] {
 """, unsafe_allow_html=True)
 
 # ==========================================
-# GOOGLE DRIVE OAUTH SETUP
-# ==========================================
-SCOPES = ['https://www.googleapis.com/auth/drive']
-creds = None
-
-if "google_token" in st.secrets:
-    creds_info = dict(st.secrets["google_token"])
-    creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
-elif os.path.exists('token.json'):
-    creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-
-if creds and creds.expired and creds.refresh_token:
-    creds.refresh(Request())
-
-drive_service = build('drive', 'v3', credentials=creds)
-MASTER_FOLDER_ID = '1UwuA56of_7fc4WkpuUqqSZSAKsgHqEoE'
-
-# ==========================================
-# SECURE SESSION STATE
+# SECURE SESSION STATE INITIALIZATION
 # ==========================================
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
@@ -295,6 +277,28 @@ if 'logged_in' not in st.session_state:
 
 if 'editing_thumb_id' not in st.session_state:
     st.session_state['editing_thumb_id'] = None
+
+# ==========================================
+# CRASH-PROOF GOOGLE DRIVE OAUTH SETUP
+# ==========================================
+SCOPES = ['https://www.googleapis.com/auth/drive']
+creds = None
+
+try:
+    if "google_token" in st.secrets:
+        creds_info = dict(st.secrets["google_token"])
+        creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
+    elif os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+
+    drive_service = build('drive', 'v3', credentials=creds)
+    MASTER_FOLDER_ID = '1UwuA56of_7fc4WkpuUqqSZSAKsgHqEoE'
+except Exception as e:
+    st.error(f"🚨 **Google Authentication Error:** The API token has expired or is invalid. Detailed trace: {str(e)}")
+    st.stop()
 
 # ==========================================
 # DIRECT PASSWORD RESET DIALOG UI
@@ -553,117 +557,118 @@ else:
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Video Grid & Player
+    # Video Grid & Player Wrapped in Try-Except block to prevent "Oh no" screens
     st.markdown('<div class="feed-header"><h3 style="margin:0; font-weight:800;">📺 VAULT GRID</h3></div>', unsafe_allow_html=True)
 
-    if st.session_state['active_video_id']:
-        st.markdown(f"#### 🎬 Now Playing: {st.session_state['active_video_name']}")
-        try:
-            with st.spinner("Decrypting secure stream..."):
-                request = drive_service.files().get_media(fileId=st.session_state['active_video_id'])
-                fh = io.BytesIO()
-                downloader = MediaIoBaseDownload(fh, request)
-                done = False
-                while not done:
-                    _, done = downloader.next_chunk()
-                fh.seek(0)
-                st.video(fh)
-        except Exception as e:
-            st.error(f"Stream decoder error: {e}")
-        
-        if st.button("❌ Close Player", type="secondary"):
-            st.session_state['active_video_id'] = None
-            st.rerun()
-        st.markdown("---")
-
-    results = drive_service.files().list(
-        q=f"'{target_folder_id}' in parents and trashed=false",
-        fields="files(id, name, mimeType, thumbnailLink)"
-    ).execute()
-    items = results.get('files', [])
-
-    videos = [i for i in items if 'video/' in i.get('mimeType', '')]
-    custom_thumbs = {}
-    for i in items:
-        if i['name'].startswith('thumb_'):
+    try:
+        if st.session_state['active_video_id']:
+            st.markdown(f"#### 🎬 Now Playing: {st.session_state['active_video_name']}")
             try:
-                vid_id = i['name'].split('_')[1].split('.')[0]
-                custom_thumbs[vid_id] = i
-            except:
-                pass
-
-    if not videos:
-        st.info("🏜️ Grid is currently empty.")
-    else:
-        cols = st.columns(3)
-        
-        for idx, video in enumerate(videos):
-            col = cols[idx % 3]
-            
-            with col:
-                st.markdown('<div class="video-card">', unsafe_allow_html=True)
-                
-                vid_id = video['id']
-                if vid_id in custom_thumbs:
-                    thumb_request = drive_service.files().get_media(fileId=custom_thumbs[vid_id]['id'])
-                    thumb_fh = io.BytesIO()
-                    thumb_downloader = MediaIoBaseDownload(thumb_fh, thumb_request)
+                with st.spinner("Decrypting secure stream..."):
+                    request = drive_service.files().get_media(fileId=st.session_state['active_video_id'])
+                    fh = io.BytesIO()
+                    downloader = MediaIoBaseDownload(fh, request)
                     done = False
-                    while not done: _, done = thumb_downloader.next_chunk()
-                    thumb_fh.seek(0)
-                    st.image(thumb_fh, use_container_width=True)
-                elif video.get('thumbnailLink'):
-                    st.image(video.get('thumbnailLink'), use_container_width=True)
-                else:
-                    st.info("⏳ Processing Thumbnail...")
+                    while not done:
+                        _, done = downloader.next_chunk()
+                    fh.seek(0)
+                    st.video(fh)
+            except Exception as e:
+                st.error(f"Stream decoder error: {e}")
+            
+            if st.button("❌ Close Player", type="secondary"):
+                st.session_state['active_video_id'] = None
+                st.rerun()
+            st.markdown("---")
 
-                display_name = os.path.splitext(video['name'])[0]
-                st.markdown(f'<div class="card-title">{display_name}</div>', unsafe_allow_html=True)
+        results = drive_service.files().list(
+            q=f"'{target_folder_id}' in parents and trashed=false",
+            fields="files(id, name, mimeType, thumbnailLink)"
+        ).execute()
+        items = results.get('files', [])
+
+        videos = [i for i in items if 'video/' in i.get('mimeType', '')]
+        custom_thumbs = {}
+        for i in items:
+            if i['name'].startswith('thumb_'):
+                try:
+                    vid_id = i['name'].split('_')[1].split('.')[0]
+                    custom_thumbs[vid_id] = i
+                except:
+                    pass
+
+        if not videos:
+            st.info("🏜️ Grid is currently empty.")
+        else:
+            cols = st.columns(3)
+            
+            for idx, video in enumerate(videos):
+                col = cols[idx % 3]
                 
-                # Action Buttons Row
-                button_col1, button_col2, button_col3 = st.columns(3)
-                with button_col1:
-                    if st.button("▶️ Watch", key=f"play_{vid_id}", type="primary"):
-                        st.session_state['active_video_id'] = vid_id
-                        st.session_state['active_video_name'] = display_name
-                        st.rerun()
-                with button_col2:
-                    if st.button("🖼️ Edit", key=f"edit_thumb_btn_{vid_id}", type="secondary"):
-                        st.session_state['editing_thumb_id'] = vid_id if st.session_state['editing_thumb_id'] != vid_id else None
-                        st.rerun()
-                with button_col3:
-                    if st.button("🗑️", key=f"del_{vid_id}", type="secondary"):
-                        drive_service.files().delete(fileId=vid_id).execute()
-                        if vid_id in custom_thumbs:
-                            drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
-                        if st.session_state['active_video_id'] == vid_id:
-                            st.session_state['active_video_id'] = None
-                        if st.session_state['editing_thumb_id'] == vid_id:
-                            st.session_state['editing_thumb_id'] = None
-                        st.rerun()
-
-                # Thumbnail Edit Expand Section
-                if st.session_state['editing_thumb_id'] == vid_id:
-                    st.markdown("---")
-                    st.write(f"**Upload new thumbnail for:** `{display_name}`")
-                    new_thumb_file = st.file_uploader("Select Image", type=["jpg", "png", "jpeg"], key=f"uploader_{vid_id}")
+                with col:
+                    st.markdown('<div class="video-card">', unsafe_allow_html=True)
                     
-                    if new_thumb_file:
-                        if st.button("💾 Save Thumbnail", key=f"save_thumb_{vid_id}", type="primary"):
-                            with st.spinner("Updating thumbnail..."):
-                                # Delete old custom thumbnail if it exists
-                                if vid_id in custom_thumbs:
-                                    drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
-                                
-                                # Upload new thumbnail
-                                thumb_ext = os.path.splitext(new_thumb_file.name)[1]
-                                thumb_metadata = {'name': f"thumb_{vid_id}{thumb_ext}", 'parents': [target_folder_id]}
-                                thumb_media = MediaIoBaseUpload(new_thumb_file, mimetype=new_thumb_file.type, resumable=False)
-                                drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
-                                
+                    vid_id = video['id']
+                    if vid_id in custom_thumbs:
+                        thumb_request = drive_service.files().get_media(fileId=custom_thumbs[vid_id]['id'])
+                        thumb_fh = io.BytesIO()
+                        thumb_downloader = MediaIoBaseDownload(thumb_fh, thumb_request)
+                        done = False
+                        while not done: _, done = thumb_downloader.next_chunk()
+                        thumb_fh.seek(0)
+                        st.image(thumb_fh, use_container_width=True)
+                    elif video.get('thumbnailLink'):
+                        st.image(video.get('thumbnailLink'), use_container_width=True)
+                    else:
+                        st.info("⏳ Processing Thumbnail...")
+
+                    display_name = os.path.splitext(video['name'])[0]
+                    st.markdown(f'<div class="card-title">{display_name}</div>', unsafe_allow_html=True)
+                    
+                    # Action Buttons Row
+                    button_col1, button_col2, button_col3 = st.columns(3)
+                    with button_col1:
+                        if st.button("▶️ Watch", key=f"play_{vid_id}", type="primary"):
+                            st.session_state['active_video_id'] = vid_id
+                            st.session_state['active_video_name'] = display_name
+                            st.rerun()
+                    with button_col2:
+                        if st.button("🖼️ Edit", key=f"edit_thumb_btn_{vid_id}", type="secondary"):
+                            st.session_state['editing_thumb_id'] = vid_id if st.session_state['editing_thumb_id'] != vid_id else None
+                            st.rerun()
+                    with button_col3:
+                        if st.button("🗑️", key=f"del_{vid_id}", type="secondary"):
+                            drive_service.files().delete(fileId=vid_id).execute()
+                            if vid_id in custom_thumbs:
+                                drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
+                            if st.session_state['active_video_id'] == vid_id:
+                                st.session_state['active_video_id'] = None
+                            if st.session_state['editing_thumb_id'] == vid_id:
                                 st.session_state['editing_thumb_id'] = None
-                                st.success("✅ Thumbnail updated!")
-                                time.sleep(1)
-                                st.rerun()
-                
-                st.markdown('</div>', unsafe_allow_html=True)
+                            st.rerun()
+
+                    # Thumbnail Edit Expand Section
+                    if st.session_state['editing_thumb_id'] == vid_id:
+                        st.markdown("---")
+                        st.write(f"**Upload new thumbnail for:** `{display_name}`")
+                        new_thumb_file = st.file_uploader("Select Image", type=["jpg", "png", "jpeg"], key=f"uploader_{vid_id}")
+                        
+                        if new_thumb_file:
+                            if st.button("💾 Save Thumbnail", key=f"save_thumb_{vid_id}", type="primary"):
+                                with st.spinner("Updating thumbnail..."):
+                                    if vid_id in custom_thumbs:
+                                        drive_service.files().delete(fileId=custom_thumbs[vid_id]['id']).execute()
+                                    
+                                    thumb_ext = os.path.splitext(new_thumb_file.name)[1]
+                                    thumb_metadata = {'name': f"thumb_{vid_id}{thumb_ext}", 'parents': [target_folder_id]}
+                                    thumb_media = MediaIoBaseUpload(new_thumb_file, mimetype=new_thumb_file.type, resumable=False)
+                                    drive_service.files().create(body=thumb_metadata, media_body=thumb_media, fields='id').execute()
+                                    
+                                    st.session_state['editing_thumb_id'] = None
+                                    st.success("✅ Thumbnail updated!")
+                                    time.sleep(1)
+                                    st.rerun()
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"🚨 **Grid Rendering Error:** An unexpected failure occurred while painting the video grid. Trace details: {str(e)}")
