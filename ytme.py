@@ -73,10 +73,10 @@ if 'has_splashed' not in st.session_state:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# HARDENED DATABASE SETUP (v2)
+# HARDENED DATABASE SETUP (v3)
 # ==========================================
 def init_db():
-    conn = sqlite3.connect('vault_users_v2.db', check_same_thread=False)
+    conn = sqlite3.connect('vault_users_v3.db', check_same_thread=False)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY, 
@@ -267,9 +267,6 @@ div.stButton > button[kind="secondary"] {
 # ==========================================
 # SECURE SESSION STATE INITIALIZATION
 # ==========================================
-# ==========================================
-# SECURE SESSION STATE INITIALIZATION
-# ==========================================
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['username'] = ''
@@ -321,7 +318,7 @@ def security_settings_modal():
     with c1:
         if st.button("✅ Update Password", type="primary"):
             if len(new_pass) >= 6:
-                conn = sqlite3.connect('vault_users_v2.db')
+                conn = sqlite3.connect('vault_users_v3.db')
                 c = conn.cursor()
                 salt = bcrypt.gensalt()
                 hashed_pw = bcrypt.hashpw(new_pass.encode('utf-8'), salt).decode('utf-8')
@@ -354,7 +351,7 @@ if not st.session_state['logged_in']:
             login_pass = st.text_input("Password", type="password")
             st.write("") 
             if st.form_submit_button("⚡ Authenticate Node", type="primary"):
-                conn = sqlite3.connect('vault_users_v2.db')
+                conn = sqlite3.connect('vault_users_v3.db')
                 c = conn.cursor()
                 c.execute("SELECT password, folder_id, is_admin, failed_attempts, locked_until FROM users WHERE username = ?", (login_user,))
                 result = c.fetchone()
@@ -400,7 +397,7 @@ if not st.session_state['logged_in']:
                 if len(reg_pass) < 6:
                     st.warning("Password must be at least 6 characters long.")
                 else:
-                    conn = sqlite3.connect('vault_users_v2.db')
+                    conn = sqlite3.connect('vault_users_v3.db')
                     c = conn.cursor()
                     c.execute("SELECT is_used FROM invite_codes WHERE code = ?", (reg_code,))
                     code_res = c.fetchone()
@@ -457,7 +454,7 @@ else:
             if st.button("🔑 Generate Secure Invite Token", type="primary"):
                 import uuid
                 new_code = f"TRIAD-{str(uuid.uuid4()).upper()[:8]}"
-                conn = sqlite3.connect('vault_users_v2.db')
+                conn = sqlite3.connect('vault_users_v3.db')
                 c = conn.cursor()
                 c.execute("INSERT INTO invite_codes VALUES (?, ?)", (new_code, 0))
                 conn.commit()
@@ -465,7 +462,7 @@ else:
                 st.success(f"**`{new_code}`**")
         
         with col_a2:
-            conn = sqlite3.connect('vault_users_v2.db')
+            conn = sqlite3.connect('vault_users_v3.db')
             c = conn.cursor()
             c.execute("SELECT username, folder_id FROM users")
             all_users = {u[0]: u[1] for u in c.fetchall()}
