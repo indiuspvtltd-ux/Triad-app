@@ -267,12 +267,19 @@ div.stButton > button[kind="secondary"] {
 # ==========================================
 # SECURE SESSION STATE INITIALIZATION
 # ==========================================
+# ==========================================
+# SECURE SESSION STATE INITIALIZATION
+# ==========================================
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['username'] = ''
     st.session_state['folder_id'] = ''
     st.session_state['is_admin'] = 0
+
+if 'active_video_id' not in st.session_state:
     st.session_state['active_video_id'] = None
+    
+if 'active_video_name' not in st.session_state:
     st.session_state['active_video_name'] = ""
 
 if 'editing_thumb_id' not in st.session_state:
